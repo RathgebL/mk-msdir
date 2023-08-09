@@ -1,15 +1,19 @@
 import tkinter
 from tkinter import ttk
 
+def enter_data():
+   # example
+   firstName = first_name_entry.get()
+
 window = tkinter.Tk()
 window.title("Data Entry Form")
 
 frame = tkinter.Frame(window)
 frame.pack()
 
-#Saving media title information
+# Saving media title information
 media_title_frame = tkinter.LabelFrame(frame, text = "Media title")
-media_title_frame.grid(row = 0, column = 0, sticky = "news", padx = 20, pady = 20)
+media_title_frame.grid(row = 0, column = 0, sticky = "news", padx = 20, pady = 10)
 
 media_title_lable = tkinter.Label(media_title_frame, text = "Title")
 media_title_lable.grid(row = 0, column = 0)
@@ -17,9 +21,9 @@ media_title_lable.grid(row = 0, column = 0)
 media_title_entry = tkinter.Entry(media_title_frame)
 media_title_entry.grid(row = 1, column = 0)
 
-#Saving composer information
+# Saving composer information
 composer_frame = tkinter.LabelFrame(frame, text = "Composer")
-composer_frame.grid(row = 1, column = 0, padx = 20, pady = 20)
+composer_frame.grid(row = 1, column = 0, padx = 20, pady = 10)
 
 from_one_composer_label = tkinter.Label(composer_frame, text = "Is the whole media from one composer?")
 from_one_composer_label.grid(row = 0, column = 0)
@@ -50,6 +54,10 @@ middle_name_entry.grid(row = 3, column = 1)
 last_name_entry.grid(row = 3, column = 2)
  
 for widget in composer_frame.winfo_children():
-    widget.grid_configure(padx=10, pady=5)
+    widget.grid_configure(padx = 10, pady = 5)
+
+# Enter button
+button = tkinter.Button(frame, text = "Enter data", command = enter_data)
+button.grid(row = 3, column = 0, sticky = "news", padx = 20, pady = 10)
 
 window.mainloop()
