@@ -200,9 +200,22 @@ def process_booklet(mydir):
     if not os.path.exists(bookletfolder):
         print(f"Folder 'booklet' not found in '{mydir}'.")
         return
+    
+    # List all files in the booklet folder
+    bookletfiles = os.listdir(bookletfolder)
+
+    # Sort the booklet files in the desired order
+    bookletfiles.sort(key=lambda x: 
+        (
+            x.startswith('booklet-b'),
+            x.startswith('booklet'),
+            int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
+        ) 
+        if x.lower().endswith(('.jpeg', '.jpg')) 
+        else (False, False, 0))
 
     # Iterate through all files in the folder
-    for filename in os.listdir(bookletfolder):
+    for filename in bookletfiles:
         if filename.lower().endswith((".jpeg", ".jpg")) and not filename.lower().startswith("processed_booklet"):
             # Full file path
             original_file_path = os.path.join(bookletfolder, filename)
@@ -291,20 +304,32 @@ process_booklet(mydir)
 input("Booklet processing done. Press ENTER to continue with renaming the audio files!")
 
 # Open all booklet files in the booklet folder
-if sys.platform == "darwin" or sys.platform == "win32":
-    booklet_folder = os.path.join(mydir, "booklet")
-    bookletfiles = [file for file in os.listdir(booklet_folder) if file.lower().endswith(".jpeg" or ".jpg")]
+if sys.platform == "darwin":
+    bookletfolder = os.path.join(mydir, "booklet")
+    bookletfiles = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
     
     # Create a list of full file paths
-    file_paths = [os.path.join(booklet_folder, file) for file in bookletfiles]
+    file_paths = [os.path.join(bookletfolder, file) for file in bookletfiles]
 
-    if sys.platform == "darwin":
-        # Use 'open' command on macOS to open all files in one preview window
-        subprocess.run(["open"] + file_paths)
+    # Sort the file paths in the desired order
+    file_paths.sort(key=lambda x: (
+        x.startswith(os.path.join(bookletfolder, 'booklet-b')),
+        x.startswith(os.path.join(bookletfolder, 'booklet')),
+        int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
+    ) if x.lower().endswith(('.jpeg', '.jpg')) else (False, False, 0))
+    
+    bookletfolder = os.path.join(mydir, "booklet")
 
-    elif sys.platform == "win32":
-        # On Windows, use 'start' command to open files in one window
-        subprocess.run(["start", "cmd", "/c", "start", "", *file_paths], shell=True)
+    # Create a temporary PDF file containing all images
+    pdf_path = os.path.join(bookletfolder, "temp_booklet.pdf")
+    img_paths = [os.path.join(bookletfolder, file) for file in bookletfiles]
+        
+    # Convert images to PDF using PIL
+    images = [Image.open(img_path) for img_path in img_paths]
+    images[0].save(pdf_path, save_all=True, append_images=images[1:])
+
+    # Open the PDF file
+    subprocess.run(["open", pdf_path])
 
 # Check for audio files in the final directory (mediadir)
 allfiles = []
@@ -321,4 +346,20 @@ if len(allfiles) == 0:
 mediadir = mkms_audiofiles(mydir)
 mkms_bookletfiles(mydir, mediadir)
 
+# Ask the user whether to delete the temporary PDF file (on Mac)
+if sys.platform == "darwin":
+    delete_pdf = input("Do you want to delete the temporary PDF file? (y/n): ").lower() == "y"
+    
+    # Get the new path to the PDF
+    newPDF_path = os.path.join(mediadir, "booklet", "temp_booklet.pdf")
+    if delete_pdf:
+        try:
+            os.remove(newPDF_path)
+            print("Temporary PDF file deleted.")
+        except Exception as e:
+            print(f"Error deleting the temporary PDF file: {e}")
+
 input("Everything done!\nPress ENTER to close: ")
+
+# without windows version
+# PDF readable put not in order
