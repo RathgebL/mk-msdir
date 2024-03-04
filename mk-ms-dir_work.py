@@ -18,6 +18,7 @@ import os
 import shutil
 from tkinter import filedialog
 from PIL import Image, ImageFilter
+import subprocess
 
 # --- sub routines
 def getcomposer():
@@ -288,6 +289,22 @@ mydir = filedialog.askdirectory()
 # Process booklet
 process_booklet(mydir)
 input("Booklet processing done. Press ENTER to continue with renaming the audio files!")
+
+# Open all booklet files in the booklet folder
+if sys.platform == "darwin" or sys.platform == "win32":
+    booklet_folder = os.path.join(mydir, "booklet")
+    bookletfiles = [file for file in os.listdir(booklet_folder) if file.lower().endswith(".jpeg" or ".jpg")]
+    
+    # Create a list of full file paths
+    file_paths = [os.path.join(booklet_folder, file) for file in bookletfiles]
+
+    if sys.platform == "darwin":
+        # Use 'open' command on macOS to open all files in one preview window
+        subprocess.run(["open"] + file_paths)
+
+    elif sys.platform == "win32":
+        # On Windows, use 'start' command to open files in one window
+        subprocess.run(["start", "cmd", "/c", "start", "", *file_paths], shell=True)
 
 # Check for audio files in the final directory (mediadir)
 allfiles = []
