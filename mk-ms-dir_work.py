@@ -19,6 +19,7 @@ import shutil
 from tkinter import filedialog
 from PIL import Image, ImageFilter
 import subprocess
+from reportlab.pdfgen import canvas
 
 # --- sub routines
 def getcomposer():
@@ -307,7 +308,7 @@ input("Booklet processing done. Press ENTER to continue with renaming the audio 
 if sys.platform == "darwin":
     bookletfolder = os.path.join(mydir, "booklet")
     bookletfiles = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
-    
+
     # Create a list of full file paths
     file_paths = [os.path.join(bookletfolder, file) for file in bookletfiles]
 
@@ -317,16 +318,33 @@ if sys.platform == "darwin":
         x.startswith(os.path.join(bookletfolder, 'booklet')),
         int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
     ) if x.lower().endswith(('.jpeg', '.jpg')) else (False, False, 0))
-    
+
     bookletfolder = os.path.join(mydir, "booklet")
 
     # Create a temporary PDF file containing all images
     pdf_path = os.path.join(bookletfolder, "temp_booklet.pdf")
-    img_paths = [os.path.join(bookletfolder, file) for file in bookletfiles]
-        
-    # Convert images to PDF using PIL
-    images = [Image.open(img_path) for img_path in img_paths]
-    images[0].save(pdf_path, save_all=True, append_images=images[1:])
+
+    # Convert images to PDF using reportlab
+    c = canvas.Canvas(pdf_path)
+
+    for file_path in file_paths:
+        # Open the image and get its original size
+        original_image = Image.open(file_path)
+        width, height = original_image.size
+        print("\nOrginal size\nWidth:", width,"\nHight:", height) 
+
+        # Calculate the aspect ratio
+        aspect_ratio = width / height
+        print("Ratio:", aspect_ratio)
+
+        # Set the width and height in the PDF, adjust as needed
+        pdf_height = width / aspect_ratio
+        print("PDF width:", width, "\nPDF hight:", pdf_height)
+
+        c.drawImage(file_path, 0, 0, width, height=pdf_height)
+        c.showPage()
+
+    c.save()
 
     # Open the PDF file
     subprocess.run(["open", pdf_path])
@@ -361,5 +379,4 @@ if sys.platform == "darwin":
 
 input("Everything done!\nPress ENTER to close: ")
 
-# without windows version
-# PDF readable put not in order
+#pdf doesn't work
