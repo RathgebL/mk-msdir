@@ -19,7 +19,10 @@ import shutil
 from tkinter import filedialog
 from PIL import Image, ImageFilter
 import subprocess
-from reportlab.pdfgen import canvas
+
+# Import for booklet processing (just on Mac)
+if sys.platform == "darwin":
+    import subprocess
 
 # --- sub routines
 def getcomposer():
@@ -38,11 +41,22 @@ def escape(string):
     string = string.replace(":", "")
     string = string.replace("/", "")
     string = string.replace("\\", "")
+
+    #replacements for windows
+    if sys.platform == "win32":
+        string = string.replace("?", ".")
+        string = string.replace("\"", "\'")
+        string = string.replace("<", "")
+        string = string.replace(">", "")
+        string = string.replace("|", "")
+        string = string.replace("*", "")
+    
     return string
 
 def mkms_audiofiles(mydir):
+    
     # audio files
-    audio_extensions = (".wav") #others can be added again if needed
+    audio_extensions = (".wav")
     allfiles = [file for file in os.listdir(mydir) if file.lower().endswith(audio_extensions)]
     allfiles.sort(key=str.lower)
 
@@ -53,7 +67,7 @@ def mkms_audiofiles(mydir):
     # mediatitle
     while True:
         mediatitle = input("Mediatitle: ").strip()
-        
+
         if mediatitle == "":
             print("Invalid input. Please provide a titel.")
         else:
@@ -70,10 +84,13 @@ def mkms_audiofiles(mydir):
             while True:
                 try:
                     numberofcomposers = int(input("How many composers are mentioned? "))
-                    break
+                    if numberofcomposers < 2:
+                        print("Invalid input. Please enter a number greater than 1.")
+                    else:
+                        break
                 except ValueError:
                     print("Invalid input. Please enter a numeric value.")
-             
+
         else:
             print("Wrong input...")
 
@@ -84,11 +101,12 @@ def mkms_audiofiles(mydir):
     allcomposers = []   # only needed when composers between 2 and 4
 
     while endtrack < len(allfiles):
+        
         # workname + composer
         print(str(len(works) + 1) + ". work of media")
         while True:
             workname = input("Name of work: ")
-        
+
             if workname.strip() == "":
                 print("Invalid input. Please provide a name of work.")
             elif any(work[2] == workname for work in works):
@@ -103,7 +121,7 @@ def mkms_audiofiles(mydir):
         multimov = ""
         while multimov.lower() not in ["y", "n"]:
             multimov = input("Does the work range over more than one audio track? (y/n) ")
-            
+
             if multimov.lower() == "y":
                 track += 1
                 endtrack_input = input("It ranges from track " + str(track) + " to track... ")
@@ -146,7 +164,7 @@ def mkms_audiofiles(mydir):
             os.makedirs(workdir, exist_ok=True)
         except OSError as e:
             print(f"Failed to create directory '{workdir}': {e}")
-            
+
         if work[3] == work[4]:
             file = allfiles[filenr]
             file_path = os.path.join(mydir, file)
@@ -178,13 +196,15 @@ def mkms_audiofiles(mydir):
                 filenr += 1
 
     # summary
+    print("\n")
     for line in summary:
         print(line)
-        
+
     return mediadir
 
 # booklet
 def extract_number(filename):
+    
     # Extracts the numeric portion from the filename
     name = os.path.splitext(filename)[0]  # Remove the file extension
     numeric_part = ''.join(filter(str.isdigit, name))
@@ -194,64 +214,68 @@ def extract_number(filename):
         return 0
 
 def process_booklet(mydir):
+    
     # Construct the path for the 'booklet' directory within the chosen directory
     bookletfolder = os.path.join(mydir, 'booklet')
 
     # Check if the 'booklet' directory exists
     if not os.path.exists(bookletfolder):
-        print(f"Folder 'booklet' not found in '{mydir}'.")
+        return
+
+    try:
+        
+        # List all files in the booklet folder
+        bookletfiles = os.listdir(bookletfolder)
+
+        # Sort the booklet files in the desired order
+        bookletfiles.sort(key=lambda x:
+            (
+                x.startswith('booklet-b'),
+                x.startswith('booklet'),
+                int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
+            )
+            if x.lower().endswith(('.jpeg', '.jpg'))
+            else (False, False, 0))
+
+        # Iterate through all files in the folder. Exclude already processed ones.
+        for filename in bookletfiles:
+            if filename.lower().endswith((".jpeg", ".jpg")) and not filename.lower().startswith("processed_booklet"):
+                
+                # Full file path
+                original_file_path = os.path.join(bookletfolder, filename)
+
+                # Open the image
+                try:
+                    image = Image.open(original_file_path)
+                except Exception as e:
+                    print(f"Error opening {filename}: {e}")
+                    continue
+
+                # Rotate the image to the right
+                rotated_image = image.transpose(Image.Transpose.ROTATE_270)
+
+                # Adjust sharpness to the highest level
+                sharpened_image = rotated_image.filter(ImageFilter.SHARPEN)
+
+                # Rename all processed files except: "booklet" and "booklet-b" files
+                excluded_files = ["booklet-b.jpeg", "booklet.jpeg", "booklet-b.jpg", "booklet.jpg"]
+                if filename in excluded_files:
+                    processed_filename = f"{filename}"
+                else:
+                    processed_filename = f"processed_{filename}"
+
+                processed_file_path = os.path.join(bookletfolder, processed_filename)
+                sharpened_image.save(processed_file_path)
+                print(f"Processed: {filename} -> {processed_filename}")
+
+                # Delete the original unprocessed JPEG file immediately after processing
+                if filename not in excluded_files:
+                    os.remove(original_file_path)
+                    print(f"Deleted original: {filename}")
+
+    except FileNotFoundError:
         return
     
-    # List all files in the booklet folder
-    bookletfiles = os.listdir(bookletfolder)
-
-    # Sort the booklet files in the desired order
-    bookletfiles.sort(key=lambda x: 
-        (
-            x.startswith('booklet-b'),
-            x.startswith('booklet'),
-            int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
-        ) 
-        if x.lower().endswith(('.jpeg', '.jpg')) 
-        else (False, False, 0))
-
-    # Iterate through all files in the folder
-    for filename in bookletfiles:
-        if filename.lower().endswith((".jpeg", ".jpg")) and not filename.lower().startswith("processed_booklet"):
-            # Full file path
-            original_file_path = os.path.join(bookletfolder, filename)
-
-            # Open the image
-            try:
-                image = Image.open(original_file_path)
-            except Exception as e:
-                print(f"Error opening {filename}: {e}")
-                continue
-
-            # Rotate the image to the right
-            rotated_image = image.transpose(Image.Transpose.ROTATE_270)
-
-            # Adjust sharpness to the highest level
-            sharpened_image = rotated_image.filter(ImageFilter.SHARPEN)
-
-            # Rename all processed files except: "booklet" and "booklet-b" files
-            excluded_files = ["booklet-b.jpeg", "booklet.jpeg", "booklet-b.jpg", "booklet.jpg"]
-            if filename in excluded_files:
-                processed_filename = f"{filename}"
-            else:
-                processed_filename = f"processed_{filename}"
-
-            processed_file_path = os.path.join(bookletfolder, processed_filename)
-            sharpened_image.save(processed_file_path)
-            print(f"Processed: {filename} -> {processed_file_path}")
-
-            # Delete the original unprocessed JPEG file immediately after processing
-            if filename not in excluded_files:
-                os.remove(original_file_path)
-                print(f"Deleted original: {filename}")
-        else:
-            print(f"Skipped processing: {filename} (already processed)")
-
 # Defining the source and destination directories
 def mkms_bookletfiles(mydir, mediadir):
     bookletdir = os.path.join(mydir, "booklet")
@@ -259,6 +283,7 @@ def mkms_bookletfiles(mydir, mediadir):
 
     if os.path.exists(bookletdir):
         counter = 1
+        
         #Sort the files
         bookfiles = os.listdir(bookletdir)
         bookfiles = sorted(bookfiles, key=extract_number)
@@ -266,9 +291,10 @@ def mkms_bookletfiles(mydir, mediadir):
         # Exclude the files which are already named correctly
         excluded_files = ["booklet-b.jpeg", "booklet.jpeg", "booklet-b.jpg", "booklet.jpg", ".DS_Store"]
 
+        print("\nBooklet renaming:")
         for bookfile in bookfiles:
             if bookfile not in excluded_files and bookfile.lower().endswith(".jpeg" or ".jpg"):
-            
+
                 # Get the file extension
                 file_extension = os.path.splitext(bookfile)[1]
 
@@ -282,12 +308,12 @@ def mkms_bookletfiles(mydir, mediadir):
                 counter += 1
 
                 os.rename(os.path.join(bookletdir, bookfile), os.path.join(bookletdir, newbookfile))
-        
+
         # Move the booklet folder and give feedback
         shutil.move(bookletdir, newbookletdir)
-        print(f"Moved booklet folder from {bookletdir} to {newbookletdir}")
+        print(f"\nMoved booklet folder from {bookletdir} -> {newbookletdir}")
 
-    else:
+    elif sys.platform == "win32":
         askbookdir = ""
         while askbookdir.lower() not in ["y", "n"]:
             askbookdir = input("No booklet directory found. Do you want to create one? (y/n) ") 
@@ -300,54 +326,72 @@ def mkms_bookletfiles(mydir, mediadir):
 # Get the directory from the user
 mydir = filedialog.askdirectory()
 
-# Process booklet
-process_booklet(mydir)
-input("Booklet processing done. Press ENTER to continue with renaming the audio files!")
-
-# Open all booklet files in the booklet folder
+# Process booklet for Mac
 if sys.platform == "darwin":
-    bookletfolder = os.path.join(mydir, "booklet")
-    bookletfiles = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
+    process_booklet(mydir)
 
-    # Create a list of full file paths
-    file_paths = [os.path.join(bookletfolder, file) for file in bookletfiles]
-
-    # Sort the file paths in the desired order
-    file_paths.sort(key=lambda x: (
-        x.startswith(os.path.join(bookletfolder, 'booklet-b')),
-        x.startswith(os.path.join(bookletfolder, 'booklet')),
-        int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
-    ) if x.lower().endswith(('.jpeg', '.jpg')) else (False, False, 0))
-
+    # Check if the booklet folder was found and if there are files inside
     bookletfolder = os.path.join(mydir, "booklet")
 
-    # Create a temporary PDF file containing all images
-    pdf_path = os.path.join(bookletfolder, "temp_booklet.pdf")
+    if os.path.exists(bookletfolder):
+        
+        # Creat a list of valid booklet files
+        valid_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
 
-    # Convert images to PDF using reportlab
-    c = canvas.Canvas(pdf_path)
+        if not valid_booklet_files:
+            print(f"No valid files found in {bookletfolder}!")
 
-    for file_path in file_paths:
-        # Open the image and get its original size
-        original_image = Image.open(file_path)
-        width, height = original_image.size
-        print("\nOrginal size\nWidth:", width,"\nHight:", height) 
+            # see if there are any files in the booklet folder
+            any_files_in_bookletfolder = [file for file in os.listdir(bookletfolder)]
+            num_files = len(any_files_in_bookletfolder)
+            if num_files >= 1:
+                print("\n\tList of files in " + bookletfolder + ":")
+                for file in any_files_in_bookletfolder:
+                    print(f"\tFilename: {file}")
 
-        # Calculate the aspect ratio
-        aspect_ratio = width / height
-        print("Ratio:", aspect_ratio)
+            # Ask the user to continue or delete the folder
+            ask_to_delete = input("\nDo you like to delete the booklet folder? (y/n): ")
+            if ask_to_delete.lower() == "y":
+                try:
+                    shutil.rmtree(bookletfolder)
+                    print("Booklet folder deleted.\n")
+                except Exception as e:
+                    print(f"Error deleting the booklet folder: {e}")
+            
+            ask_to_continue = input("Do you want to continue with renaming the audio files (y/n): ")
+            if ask_to_continue.lower() != "y":
+                sys.exit()
 
-        # Set the width and height in the PDF, adjust as needed
-        pdf_height = width / aspect_ratio
-        print("PDF width:", width, "\nPDF hight:", pdf_height)
+        else:  
+            if sys.platform == "darwin":
+                
+                # Create a list of full file paths
+                file_paths = [os.path.join(bookletfolder, file) for file in valid_booklet_files]
 
-        c.drawImage(file_path, 0, 0, width, height=pdf_height)
-        c.showPage()
+                # Sort the file paths based on their numeric values
+                file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
 
-    c.save()
+                # Add debug prints
+                print("Sorted file paths:")
+                for path in file_paths:
+                    print(path)
 
-    # Open the PDF file
-    subprocess.run(["open", pdf_path])
+                # Skip processing for .DS_Store files
+                file_paths = [path for path in file_paths if not os.path.basename(path).lower().endswith(".ds_store")]
+
+                print("Booklet processing done.")
+                input("\nPress ENTER to continue with renaming the audio files! (booklet will automatically be opened)\n")
+
+                # Open all files in one window (Preview application)
+                subprocess.Popen(["open"] + file_paths)
+
+    else:
+        user_input = input("No booklet folder found. "
+                        "\nPress ENTER if you want to continue with renaming the audio files without booklet processing "
+                        "or type \"EXIT\" to stop: ")
+
+        if user_input.lower() == "exit":
+            sys.exit()
 
 # Check for audio files in the final directory (mediadir)
 allfiles = []
@@ -364,19 +408,7 @@ if len(allfiles) == 0:
 mediadir = mkms_audiofiles(mydir)
 mkms_bookletfiles(mydir, mediadir)
 
-# Ask the user whether to delete the temporary PDF file (on Mac)
-if sys.platform == "darwin":
-    delete_pdf = input("Do you want to delete the temporary PDF file? (y/n): ").lower() == "y"
-    
-    # Get the new path to the PDF
-    newPDF_path = os.path.join(mediadir, "booklet", "temp_booklet.pdf")
-    if delete_pdf:
-        try:
-            os.remove(newPDF_path)
-            print("Temporary PDF file deleted.")
-        except Exception as e:
-            print(f"Error deleting the temporary PDF file: {e}")
+if sys.platform == "win32":
+    input("\nEverything done!\nPress ENTER to close: ")
 
-input("Everything done!\nPress ENTER to close: ")
-
-#pdf doesn't work
+# 12-03-24
