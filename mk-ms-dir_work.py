@@ -301,21 +301,16 @@ def process_booklet(mydir):
                 # Adjust sharpness to the highest level
                 sharpened_image = rotated_image.filter(ImageFilter.SHARPEN)
 
-                # Rename all processed files except: "booklet" and "booklet-b" files
-                excluded_files = ["booklet-b.jpeg", "booklet.jpeg", "booklet-b.jpg", "booklet.jpg"]
-                if filename in excluded_files:
-                    processed_filename = f"{filename}"
-                else:
-                    processed_filename = f"processed_{filename}"
+                # Rename processed files
+                processed_filename = f"processed_{filename}".replace(" ", "_")
 
                 processed_file_path = os.path.join(bookletfolder, processed_filename)
                 sharpened_image.save(processed_file_path)
                 print(f"Processed: {filename} -> {processed_filename}")
 
                 # Delete the original unprocessed JPEG file immediately after processing
-                if filename not in excluded_files:
-                    os.remove(original_file_path)
-                    print(f"Deleted original: {filename}")
+                os.remove(original_file_path)
+                print(f"Deleted original: {filename}")
 
     except FileNotFoundError:
         return
@@ -331,14 +326,16 @@ def mkms_bookletfiles(mydir, mediadir):
         #Sort the files
         bookfiles = os.listdir(bookletdir)
         bookfiles = sorted(bookfiles, key=extract_number)
-
-        # Exclude the files which are already named correctly
-        excluded_files = ["booklet-b.jpeg", "booklet.jpeg", "booklet-b.jpg", "booklet.jpg", ".DS_Store"]
+        special_files = ["processed_booklet-b.jpeg", "processed_booklet.jpeg", "processed_booklet-b.jpg", "processed_booklet.jpg"]
 
         print("\nBooklet renaming:")
         for bookfile in bookfiles:
-            if bookfile not in excluded_files and bookfile.lower().endswith(".jpeg" or ".jpg"):
-
+            if bookfile in special_files:
+                # Remove "processed_" from the filename and replace "jpg" with "jpeg"
+                newbookfile = bookfile.replace("processed_", "").replace(".jpg", ".jpeg")
+                print(f"Renaming: {bookfile} -> {newbookfile}")
+                os.rename(os.path.join(bookletdir, bookfile), os.path.join(bookletdir, newbookfile))
+            elif bookfile not in special_files and bookfile.lower().endswith(".jpeg" or ".jpg"):
                 # Get the file extension
                 file_extension = os.path.splitext(bookfile)[1]
 
