@@ -174,9 +174,11 @@ def mkms_audiofiles(mydir):
     # work directories
     filenr = 0
     summary = []
-    for work in works:
-        workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
+    prev_movtitle = None  # Variable to store the previous movement title
 
+    for work in works:
+        workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))        
+        
         try:
             os.makedirs(workdir, exist_ok=True)
         except OSError as e:
@@ -216,7 +218,16 @@ def mkms_audiofiles(mydir):
                             break
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
+                    elif movtitle == prev_movtitle:  # Check if input is the same as previous one
+                        confirm = input("You gave the same input as before. Are you sure about it? (y/n) ").lower()
+                        if confirm == "n":
+                            continue
+                        elif confirm == "y":
+                            break
+                        else:
+                            print("Invalid input. Please enter 'y' or 'n'.")
                     else:
+                        prev_movtitle = movtitle  # Update prev_movtitle with current input
                         break
 
                 file_path = os.path.join(mydir, file)  # Update file_path for each iteration
@@ -444,4 +455,4 @@ if sys.platform == "win32":
     print("\nEverything done!")
     input("Press ENTER to close: ")
 
-# 26-03-24
+# 16-04-24
