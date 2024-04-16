@@ -99,6 +99,7 @@ def mkms_audiofiles(mydir):
     endtrack = 0
     works = []  # List to store information about works
     allcomposers = []   # only needed when composers between 2 and 4
+    total_tracks = len(allfiles) # Get the number of available tracks
 
     while endtrack < len(allfiles):
         
@@ -142,15 +143,23 @@ def mkms_audiofiles(mydir):
 
             if multimov.lower() == "y":
                 track += 1
-                endtrack_input = input("It ranges from track " + str(track) + " to track... ")
-
-                while not endtrack_input.isdigit():
-                    print("Invalid input. Please enter a numeric value.")
+            
+                while True:
                     endtrack_input = input("It ranges from track " + str(track) + " to track... ")
-                endtrack = int(endtrack_input)
+                    
+                    try:
+                        endtrack = int(endtrack_input)
+
+                        # Check if the input is within the valid range
+                        if track <= endtrack <= total_tracks:
+                            break
+                        else:
+                            print("Invalid input. End track is out of range.")
+                    except ValueError:
+                        print("Invalid input. Please enter a numeric value.")
             elif multimov.lower() == "n":
                 track += 1
-                endtrack = track            
+                endtrack = track
             else:
                 print("Wrong input....")
 
