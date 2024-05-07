@@ -37,15 +37,16 @@ def check_exit(input_string): #Function to check if input is '!exit'
         print("Exiting the program.")
         exit()  # Exit the program
 
-def handle_input(prompt):
+def handle_input(prompt, works=None, check_unique=False):
     while True:
         user_input = input(prompt).strip().replace(" ", "_")
-        if user_input.strip() == "":    # Check if input is empty
-                print("Empty input. Please provide a name.")
+        
+        if user_input.strip() == "":
+            print("Empty input. Please provide a name.")
         elif len(user_input.strip()) == 1:
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
             if confirm == "n":
-                break
+                return None  # Indicates user wants to cancel input
             elif confirm == "y" or confirm == "":
                 continue
             else:
@@ -53,13 +54,15 @@ def handle_input(prompt):
         elif user_input.strip().islower():
             confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
             if confirm == "n":
-                break
+                return None  # Indicates user wants to cancel input
             elif confirm == "y" or confirm == "":
                 continue
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
+        elif check_unique and works and any(work[2] == user_input for work in works):
+            print("Work with the same name already exists. Please provide a unique name.")
         else:
-            break
+            return user_input  # Return valid input
 
 def getmedianumber():
     while True:
@@ -221,30 +224,10 @@ def mkms_audiofiles(mydir):
         # workname + composer
         print(str(len(works) + 1) + ". work of media")
         while True:
-            workname = input("Name of work: ")
+            workname = handle_input("Name of work: ")
             check_exit(workname)
-            if len(workname.strip()) == 1:  # Check if input length is 1 character
-                confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
-                check_exit(confirm)
-                if confirm == "y" or confirm == "":
-                    continue
-                elif confirm == "n":
-                    break
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")
-            elif workname.strip() == "":    # Check if input is empty
-                print("Empty input. Please provide a name of work.")
-            elif any(work[2] == workname for work in works):    #check if input is unique
-                print("Work with the same name already exists. Please provide a unique name.")           
-            elif workname.strip()[0].islower():    # Check if input starts with a capital letter 
-                confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
-                check_exit(confirm)
-                if confirm == "y" or confirm == "":
-                    continue
-                elif confirm == "n":
-                    break
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")           
+            if any(work[2] == workname for work in works):    #check if input is unique
+                print("Work with the same name already exists. Please provide a unique name.")                      
             else:
                 break
 
@@ -326,29 +309,9 @@ def mkms_audiofiles(mydir):
             for multimovnr in range(1, (int(work[4]) - int(work[3]) + 2)):
                 file = allfiles[filenr]
                 while True:
-                    movtitle = input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")
+                    movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")
                     check_exit(movtitle)         
-                    if len(movtitle.strip()) == 1:  # Check if input length is 1 character
-                        confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
-                        check_exit(confirm)
-                        if confirm == "y" or confirm == "":
-                            continue
-                        elif confirm == "n":
-                            break
-                        else:
-                            print("Invalid input. Please enter 'y' or 'n'.")
-                    elif movtitle.strip() == "":
-                        print("Empty input. Please provide a name for the movement.")            
-                    elif movtitle.strip()[0].islower():  
-                        confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
-                        check_exit(confirm)
-                        if confirm == "y" or confirm == "":
-                            continue
-                        elif confirm == "n":
-                            break
-                        else:
-                            print("Invalid input. Please enter 'y' or 'n'.")
-                    elif movtitle == prev_movtitle:  # Check if input is the same as previous one
+                    if movtitle == prev_movtitle:  # Check if input is the same as previous one
                         confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
                         check_exit(confirm)
                         if confirm == "y" or confirm == "":
