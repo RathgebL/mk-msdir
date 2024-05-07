@@ -6,11 +6,16 @@
 ## not possible: Collections
 ## Updated by Lennat Rathgeb, 2022-23
 ## now: Python3
-## new features:    renaming of scans if in booklet folder
-##                  error handling
-##                  opens finder window for user input
-##                  booklet processing
-
+## new features:    error handling
+##                  default values for yes/no-questions
+##                  filedialog for user input of working directory
+##                  append data to excel sheet
+##                  booklet processing:
+##                      - rotating
+##                      - sharpening
+##                      - renaming
+##                      - deleting unprocessed files
+##                      - opening all booklet files
 
 # --- importing
 import sys
@@ -18,22 +23,87 @@ import os
 import shutil
 from tkinter import filedialog
 from PIL import Image, ImageFilter
-import subprocess
+import pandas as pd
+from datetime import datetime
+import time
 
 # Import for booklet processing (just on Mac)
 if sys.platform == "darwin":
     import subprocess
 
 # --- sub routines
+def check_exit(input_string): #Function to check if input is '!exit'
+    if str(input_string).strip().lower() == '!exit':
+        print("Exiting the program.")
+        exit()  # Exit the program
+
+def handle_input(prompt):
+    while True:
+        user_input = input(prompt).strip().replace(" ", "_")
+        if user_input.strip() == "":    # Check if input is empty
+                print("Empty input. Please provide a name.")
+        elif len(user_input.strip()) == 1:
+            confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
+            if confirm == "n":
+                break
+            elif confirm == "y" or confirm == "":
+                continue
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+        elif user_input.strip().islower():
+            confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
+            if confirm == "n":
+                break
+            elif confirm == "y" or confirm == "":
+                continue
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+        else:
+            break
+
+def getmedianumber():
+    while True:
+        try:
+            medianumber = int(input("Enter the number of the media (four digit number on the CD cover): "))
+            check_exit(medianumber)  # Check for exit command
+            num_str = str(medianumber)
+            if len(num_str) == 4:
+                return (medianumber)
+            else:
+                print("Please enter a valid number (four digits).") #change the number of digits if needed
+        except ValueError:
+            print("Invalid input. Please enter a numeric value.")
+
 def getcomposer():
     while True:
-        lastname = input("Family name of composer: ").strip().replace(" ", "_")
-        firstname = input("First name of composer: ").strip().replace(" ", "_")
+        lastname = handle_input("Family name of composer: ")
+        firstname = handle_input("First name of composer: ")
+        check_exit(handle_input)
+        return (lastname, firstname)
+      
+def getinterpreters():
+    while True:
+        try:
+            num_interpreters = int(input("Enter the number of interpreters: "))
+            check_exit(num_interpreters)
+            if num_interpreters > 0:
+                break
+            else:
+                print("Please enter a valid number (greater than zero).")
+        except ValueError:
+            print("Invalid input. Please enter a numeric value.")
 
-        if firstname == "" or lastname == "":
-            print("Invalid input. Please provide both a family name and a first name.")
-        else:
-            return (lastname, firstname)
+    # Get the names of interpreters
+    interpreters = []
+    for i in range(num_interpreters):
+        while True:
+            interpreter_name = handle_input(f"Enter the name of the {i+1}. interpreter (Firstname Lastname): ")
+            check_exit(interpreter_name)
+            interpreters.append(interpreter_name)
+            break
+            
+    
+    return(interpreters)
 
 def escape(string):
     string = string.replace(" ", "_")
@@ -66,25 +136,23 @@ def mkms_audiofiles(mydir):
 
     # mediatitle
     while True:
-        mediatitle = input("\nMediatitle: ").strip()
-
-        if mediatitle == "":
-            print("Invalid input. Please provide a titel.")
-        else:
-            break
+        mediatitle = handle_input("\nMediatitle: ")
+        check_exit(mediatitle)
+        break
 
     # number of composers
     numberofcomposers = 0
     while numberofcomposers == 0:
-        yorn = input("Is the whole media from one composer? (y/n) ")
-        
-        if yorn.lower() == "y":
+        yorn = input("Is the whole media from one composer? (y(Default)/n) ")
+        check_exit(yorn)
+        if yorn.lower() == "y" or yorn == "":
             numberofcomposers = 1
             composer = getcomposer()        
         elif yorn.lower() == "n":
             while True:
                 try:
                     numberofcomposers = int(input("How many composers are mentioned? "))
+                    check_exit(numberofcomposers)
                     if numberofcomposers < 2:
                         print("Invalid input. Please enter a number greater than 1.")
                     else:
@@ -93,6 +161,53 @@ def mkms_audiofiles(mydir):
                     print("Invalid input. Please enter a numeric value.")
         else:
             print("Wrong input...")
+
+    # Excel Sheet
+    booklet_folder = os.path.join(mydir, 'booklet')
+    if not os.path.exists(booklet_folder):
+        while True:
+            ask_for_box = input("Is this media part of a box set? (y(Default)/n): ").strip().lower()
+            check_exit(ask_for_box)
+            if ask_for_box == "y" or ask_for_box == "":
+                print("Skipping Excel sheet creation for subsequent discs.")
+                break
+            elif ask_for_box == "n":
+                list_of_interpreters = getinterpreters() # Get an array of interpreters
+                medianumber = getmedianumber() # Get the four digit number writen on the CD cover later used as the counter in the excel sheet
+                today = datetime.today() # Get the date in YYYY-MM-DD
+                dir_name = os.path.basename(mydir) # Extract the directory name (last part of the path)
+
+                # Prepare the data for the Excel sheet
+                if numberofcomposers == 1:
+                    composer_name = f"{composer[0]}, {composer[1]}"
+                else:
+                   composer_name = 'Verschiedene'
+
+                data = {
+                        'Counter': [medianumber],
+                        'Composer': [composer_name],
+                        'Mediatitle': [mediatitle],
+                        'Interpreters': [', '.join(list_of_interpreters)],
+                        'Place': [dir_name],
+                        'Status': [""],
+                        'Date': [today],
+                        'Comment' : [""]
+                    }
+                    
+                # Create a DataFrame from the data
+                df = pd.DataFrame(data)
+
+                # Define the path for the Excel file on the desktop
+                desktop_dir = os.path.expanduser('~/Desktop')  # Get the path to the desktop
+                excel_file_path = os.path.join(desktop_dir, 'media_data.xlsx')
+
+                # Write the DataFrame to an Excel file
+                df.to_excel(excel_file_path, index=False)
+
+                print(f"Excel sheet created: {excel_file_path}")
+                break
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
 
     # work stuff
     track = 0
@@ -107,24 +222,24 @@ def mkms_audiofiles(mydir):
         print(str(len(works) + 1) + ". work of media")
         while True:
             workname = input("Name of work: ")
-
+            check_exit(workname)
             if len(workname.strip()) == 1:  # Check if input length is 1 character
-                confirm = input("You entered a single character. Are you sure about your input? (y/n) ").lower()
-                
-                if confirm == "n":
+                confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
+                check_exit(confirm)
+                if confirm == "y" or confirm == "":
                     continue
-                elif confirm == "y":
+                elif confirm == "n":
                     break
                 else:
                     print("Invalid input. Please enter 'y' or 'n'.")
             elif workname.strip() == "":    # Check if input is empty
-                print("Invalid input. Please provide a name of work.")
+                print("Empty input. Please provide a name of work.")
             elif any(work[2] == workname for work in works):    #check if input is unique
                 print("Work with the same name already exists. Please provide a unique name.")           
             elif workname.strip()[0].islower():    # Check if input starts with a capital letter 
-                confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y/n) ").lower()
-                
-                if confirm == "y":
+                confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
+                check_exit(confirm)
+                if confirm == "y" or confirm == "":
                     continue
                 elif confirm == "n":
                     break
@@ -137,16 +252,15 @@ def mkms_audiofiles(mydir):
             composer = getcomposer()
             allcomposers.append(composer)
 
-        multimov = ""
-        while multimov.lower() not in ["y", "n"]:
-            multimov = input("Does the work range over more than one audio track? (y/n) ")
-
+        while True:
+            multimov = input("Does the work range over more than one audio track? (y/n(default)) ")
+            check_exit(multimov)
             if multimov.lower() == "y":
                 track += 1
             
                 while True:
                     endtrack_input = input("It ranges from track " + str(track) + " to track... ")
-                    
+                    check_exit(endtrack_input)
                     try:
                         endtrack = int(endtrack_input)
 
@@ -155,11 +269,16 @@ def mkms_audiofiles(mydir):
                             break
                         else:
                             print("Invalid input. End track is out of range.")
+                            continue
                     except ValueError:
                         print("Invalid input. Please enter a numeric value.")
-            elif multimov.lower() == "n":
+
+                if endtrack_input:
+                    break
+            elif multimov.lower() == "n" or multimov.lower() == "":
                 track += 1
                 endtrack = track
+                break
             else:
                 print("Wrong input....")
 
@@ -208,30 +327,33 @@ def mkms_audiofiles(mydir):
                 file = allfiles[filenr]
                 while True:
                     movtitle = input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")
-
+                    check_exit(movtitle)         
                     if len(movtitle.strip()) == 1:  # Check if input length is 1 character
-                        confirm = input("You entered a single character. Are you sure about your input? (y/n) ").lower()
-                        if confirm == "n":
+                        confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
+                        check_exit(confirm)
+                        if confirm == "y" or confirm == "":
                             continue
-                        elif confirm == "y":
+                        elif confirm == "n":
                             break
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
                     elif movtitle.strip() == "":
-                        print("Invalid input. Please provide a name for the movement.")            
+                        print("Empty input. Please provide a name for the movement.")            
                     elif movtitle.strip()[0].islower():  
-                        confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y/n) ").lower()
-                        if confirm == "y":
+                        confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
+                        check_exit(confirm)
+                        if confirm == "y" or confirm == "":
                             continue
                         elif confirm == "n":
                             break
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
                     elif movtitle == prev_movtitle:  # Check if input is the same as previous one
-                        confirm = input("You gave the same input as before. Are you sure about it? (y/n) ").lower()
-                        if confirm == "n":
+                        confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
+                        check_exit(confirm)
+                        if confirm == "y" or confirm == "":
                             continue
-                        elif confirm == "y":
+                        elif confirm == "n":
                             break
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
@@ -252,8 +374,9 @@ def mkms_audiofiles(mydir):
     print("\n")
     for line in summary:
         print(line)
+    #print(f"Interpreters: {list_of_interpreters}")
 
-    return mediadir
+    return mediadir 
 
 # booklet
 def extract_number(filename):
@@ -365,16 +488,31 @@ def mkms_bookletfiles(mydir, mediadir):
 
     elif sys.platform == "win32":
         askbookdir = ""
-        while askbookdir.lower() not in ["y", "n"]:
-            askbookdir = input("No booklet directory found. Do you want to create one? (y/n) ") 
-        if askbookdir.lower() == "y": 
-            os.mkdir(newbookletdir)
-            print("New booklet directory created ready to put files in.")
+        while True:
+            askbookdir = input("No booklet directory found. Do you want to create one? (y(Default)/n) ") 
+            if askbookdir.lower() == "y" or askbookdir == "": 
+                os.mkdir(newbookletdir)
+                print("New booklet directory created ready to put files in.")
+                break
+            elif askbookdir == "n":
+                break
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
 
 # --- run
+print("To quit at any time just type '!exit'.")
+print("To get the default value just press ENTER.")
 
-# Get the directory from the user
-mydir = filedialog.askdirectory()
+while True:
+    # Ask for directory
+    mydir = filedialog.askdirectory()
+
+    # Check if directory is not empty
+    if mydir and mydir != '/':
+        print("\nChosen directory:", mydir)
+        break
+    else:
+        print("\nNo directory chosen. Please choose a directory.")
 
 # Process booklet for Mac
 if sys.platform == "darwin":
@@ -400,15 +538,24 @@ if sys.platform == "darwin":
                     print(f"\tFilename: {file}")
 
             # Ask the user to continue or delete the folder
-            ask_to_delete = input("Do you like to delete the booklet folder? (y/n): ")
-            if ask_to_delete.lower() == "y":
-                try:
-                    shutil.rmtree(bookletfolder)
-                    print("Booklet folder deleted.\n")
-                except Exception as e:
-                    print(f"Error deleting the booklet folder: {e}")
+            while True:
+                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ")
+                check_exit(ask_to_delete)
+                if ask_to_delete.lower() == "y":
+                    try:
+                        shutil.rmtree(bookletfolder)
+                        print("Booklet folder deleted.\n")
+                        break
+                    except Exception as e:
+                        print(f"Error deleting the booklet folder: {e}")
+                        continue
+                elif ask_to_delete == "n" or ask_to_delete == "":
+                    break
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
             
-            ask_to_continue = input("Do you want to continue with renaming the audio files (y/n): ")
+            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ")
+            check_exit(ask_to_continue)
             if ask_to_continue.lower() != "y":
                 sys.exit()
 
@@ -429,18 +576,16 @@ if sys.platform == "darwin":
                 # Skip processing for .DS_Store files
                 file_paths = [path for path in file_paths if not os.path.basename(path).lower().endswith(".ds_store")]
 
-                print("Booklet processing done.")
-                input("\nPress ENTER to continue with renaming the audio files! (booklet will automatically be opened)")
+                print("Booklet processing done.\nBooklet will be opend automatically.\nContinue with renaming audio files in a second...")
+                
+                # Pause the execution for 1 second
+                time.sleep(0.5)
 
                 # Open all files in one window (Preview application)
                 subprocess.Popen(["open"] + file_paths)
 
     else:
         print("\nNo booklet folder found!")
-        user_input = input("Press ENTER if you want to continue with renaming the audio files without booklet processing or type \"EXIT\" to stop: ")
-
-        if user_input.lower() == "exit":
-            sys.exit()
 
 # Check for audio files in the final directory (mediadir)
 allfiles = []
@@ -461,4 +606,4 @@ if sys.platform == "win32":
     print("\nEverything done!")
     input("Press ENTER to close: ")
 
-# 16-04-24
+# 07-05-24
