@@ -37,7 +37,7 @@ def check_exit(input_string): #Function to check if input is '!exit'
         print("Exiting the program.")
         exit()  # Exit the program
 
-def handle_input(prompt, works=None, check_unique=False):
+def handle_input(prompt):
     while True:
         user_input = input(prompt).strip().replace(" ", "_")
         
@@ -59,8 +59,6 @@ def handle_input(prompt, works=None, check_unique=False):
                 continue
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
-        elif check_unique and works and any(work[2] == user_input for work in works):
-            print("Work with the same name already exists. Please provide a unique name.")
         else:
             return user_input  # Return valid input
 
@@ -137,11 +135,36 @@ def mkms_audiofiles(mydir):
         print("No audio files in " + mydir + "!")
         sys.exit(1)
 
+    # box set
+    booklet_folder = os.path.join(mydir, 'booklet')
+    if not os.path.exists(booklet_folder):
+        ask_for_box = input("Is this media part of a box set? (y(Default)/n): ").strip().lower()
+        check_exit(ask_for_box)
+        while True:
+            if ask_for_box == "y" or ask_for_box == "":
+                try:
+                    cdnumber = int(input("Number of current CD: "))
+                    if cdnumber < 0:
+                        print("Invalid input. Please provide a natural number.")
+                    elif cdnumber == "":
+                        print("Empty input. Please provide a natural number.")
+                    else:
+                        break
+                except ValueError:
+                    print("Invalid input. Please enter a numeric value.")
+            elif ask_for_box == "n":
+                break
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+
     # mediatitle
     while True:
         mediatitle = handle_input("\nMediatitle: ")
         check_exit(mediatitle)
-        break
+        if cdnumber:
+            mediatitle += f"._{str(cdnumber)}"
+            print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+            break
 
     # number of composers
     numberofcomposers = 0
@@ -169,8 +192,6 @@ def mkms_audiofiles(mydir):
     booklet_folder = os.path.join(mydir, 'booklet')
     if not os.path.exists(booklet_folder):
         while True:
-            ask_for_box = input("Is this media part of a box set? (y(Default)/n): ").strip().lower()
-            check_exit(ask_for_box)
             if ask_for_box == "y" or ask_for_box == "":
                 print("Skipping Excel sheet creation for subsequent discs.")
                 break
@@ -224,10 +245,30 @@ def mkms_audiofiles(mydir):
         # workname + composer
         print(str(len(works) + 1) + ". work of media")
         while True:
-            workname = handle_input("Name of work: ")
+            workname = input("Name of work: ")
             check_exit(workname)
-            if any(work[2] == workname for work in works):    #check if input is unique
-                print("Work with the same name already exists. Please provide a unique name.")                      
+            if len(workname.strip()) == 1:  # Check if input length is 1 character
+                confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
+                check_exit(confirm)
+                if confirm == "y" or confirm == "":
+                    continue
+                elif confirm == "n":
+                    break
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+            elif workname.strip() == "":    # Check if input is empty
+                print("Empty input. Please provide a name of work.")
+            elif any(work[2] == workname for work in works):    #check if input is unique
+                print("Work with the same name already exists. Please provide a unique name.")           
+            elif workname.strip()[0].islower():    # Check if input starts with a capital letter 
+                confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
+                check_exit(confirm)
+                if confirm == "y" or confirm == "":
+                    continue
+                elif confirm == "n":
+                    break
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")           
             else:
                 break
 
@@ -569,4 +610,4 @@ if sys.platform == "win32":
     print("\nEverything done!")
     input("Press ENTER to close: ")
 
-# 07-05-24
+# 15-05-24
