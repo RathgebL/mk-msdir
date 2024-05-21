@@ -39,14 +39,14 @@ def check_exit(input_string): #Function to check if input is '!exit'
 
 def handle_input(prompt):
     while True:
-        user_input = input(prompt).strip().replace(" ", "_")
+        user_input = str(input(prompt).strip().replace(" ", "_"))
         
         if user_input.strip() == "":
             print("Empty input. Please provide a name.")
         elif len(user_input.strip()) == 1:
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
             if confirm == "n":
-                return None  # Indicates user wants to cancel input
+                return user_input
             elif confirm == "y" or confirm == "":
                 continue
             else:
@@ -54,7 +54,7 @@ def handle_input(prompt):
         elif user_input.strip().islower():
             confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
             if confirm == "n":
-                return None  # Indicates user wants to cancel input
+                return user_input
             elif confirm == "y" or confirm == "":
                 continue
             else:
@@ -124,6 +124,8 @@ def escape(string):
     
     return string
 
+ask_for_box = ""
+
 def mkms_audiofiles(mydir):
     
     # audio files
@@ -136,8 +138,8 @@ def mkms_audiofiles(mydir):
         sys.exit(1)
 
     # box set
-    booklet_folder = os.path.join(mydir, 'booklet')
-    if not os.path.exists(booklet_folder):
+    booklet_folder_status = os.path.join(mydir, 'booklet')
+    if not os.path.exists(booklet_folder_status):
         ask_for_box = input("Is this media part of a box set? (y(Default)/n): ").strip().lower()
         check_exit(ask_for_box)
         while True:
@@ -245,30 +247,10 @@ def mkms_audiofiles(mydir):
         # workname + composer
         print(str(len(works) + 1) + ". work of media")
         while True:
-            workname = input("Name of work: ")
+            workname = handle_input("Name of work: ")
             check_exit(workname)
-            if len(workname.strip()) == 1:  # Check if input length is 1 character
-                confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
-                check_exit(confirm)
-                if confirm == "y" or confirm == "":
-                    continue
-                elif confirm == "n":
-                    break
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")
-            elif workname.strip() == "":    # Check if input is empty
-                print("Empty input. Please provide a name of work.")
-            elif any(work[2] == workname for work in works):    #check if input is unique
-                print("Work with the same name already exists. Please provide a unique name.")           
-            elif workname.strip()[0].islower():    # Check if input starts with a capital letter 
-                confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
-                check_exit(confirm)
-                if confirm == "y" or confirm == "":
-                    continue
-                elif confirm == "n":
-                    break
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")           
+            if any(work[2] == workname for work in works):    #check if input is unique
+                print("Work with the same name already exists. Please provide a unique name.")                      
             else:
                 break
 
@@ -380,7 +362,7 @@ def mkms_audiofiles(mydir):
         print(line)
     #print(f"Interpreters: {list_of_interpreters}")
 
-    return mediadir 
+    return mediadir
 
 # booklet
 def extract_number(filename):
@@ -489,7 +471,7 @@ def mkms_bookletfiles(mydir, mediadir):
         # Move the booklet folder and give feedback
         shutil.move(bookletdir, newbookletdir)
         print(f"\nMoved booklet folder from {bookletdir} -> {newbookletdir}")
-
+    
     elif sys.platform == "win32":
         askbookdir = ""
         while True:
@@ -606,8 +588,34 @@ if len(allfiles) == 0:
 mediadir = mkms_audiofiles(mydir)
 mkms_bookletfiles(mydir, mediadir)
 
+# Check if booklet folder is not present and ask_for_box indicates part of a box set
+bookletstatus = os.path.join(mydir, 'booklet')
+if not os.path.exists(bookletstatus) and (ask_for_box == "y" or ask_for_box == ""):
+    move_folder = input("Do you want to move the finished folder to another location? (y(Default)/n): ").strip().lower()
+    check_exit(move_folder)
+    while True:
+        if move_folder == "y" or move_folder == "":
+            destination_folder = filedialog.askdirectory()
+                
+            if destination_folder:
+                # Move the finished media directory to the selected destination
+                try:
+                    shutil.move(mediadir, destination_folder)
+                    print(f"Media directory moved to: {destination_folder}")
+                    break
+                except Exception as e:
+                    print(f"Error moving media directory: {e}")
+            else:
+                print("No destination folder selected. Media directory not moved.")
+        elif move_folder == "n":
+            print("Media directory not moved.")
+            break
+        else:
+            print("Invalid input. Please enter 'y' or 'n'.")
+
 if sys.platform == "win32":
     print("\nEverything done!")
     input("Press ENTER to close: ")
+
 
 # 15-05-24
