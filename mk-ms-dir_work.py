@@ -180,7 +180,7 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
     # mediatitle
     while True:
         mediatitle = handle_input("\nMediatitle: ")
-        if not os.path.exists(booklet_folder_status):
+        if (ask_for_box == "y" or ask_for_box == ""):
             mediatitle += f"._CD{str(cdnumber)}"
             print(f"Box number successfully appended. New mediatitle: {mediatitle}")
             break
@@ -212,14 +212,12 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
     # Excel Sheet
     if (ask_for_box == "y" or ask_for_box == "") and str(cdnumber) != "1":
         print("Skipping Excel sheet creation for subsequent discs.")
-    elif ask_for_box == "n" or str(cdnumber) == "1":
-        medianumber = getmedianumber() # Get the four digit number writen on the CD cover later used as the counter in the excel sheet
+    elif ask_for_box == "n" or (ask_for_box == "y" or ask_for_box == "") and str(cdnumber) == "1":
         list_of_interpreters = getinterpreters() # Get an array of interpreters
-        today = datetime.today() # Get the date in YYYY-MM-DD
+        medianumber = getmedianumber() # Get the four digit number writen on the CD cover later used as the counter in the excel sheet
+        today = datetime.today() 
+        formatted_date = today.strftime('%Y-%m-%d') # Get the date in YYYY-MM-DD
         dir_name = os.path.basename(mydir) # Extract the directory name (last part of the path)
-        
-        # DEBUG
-        print(today)
 
         # Prepare the data for the Excel sheet
         if numberofcomposers == 1:
@@ -227,25 +225,32 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
         else:
             composer_name = 'Verschiedene'
 
-        data = {
-                'Counter': [medianumber],
-                'Composer': [composer_name],
-                'Mediatitle': [mediatitle],
-                'Interpreters': [', '.join(list_of_interpreters)],
-                'Place': [dir_name],
-                'Status': [""],
-                'Date': [today],
-                'Comment' : [""]
-                }
+        new_data = {
+                    'CD Number': [medianumber],
+                    'Composer': [composer_name],
+                    'Mediatitle': [mediatitle],
+                    'Interpreters': [', '.join(list_of_interpreters)],
+                    'Place': [dir_name],
+                    'Status': [""],
+                    'Date': [formatted_date],
+                    'Comment' : [""]
+                    }
                     
         # Create a DataFrame from the data and define the path for the Excel file on the desktop
-        df = pd.DataFrame(data)
+        new_df = pd.DataFrame(new_data)
         desktop_dir = os.path.expanduser('~/Desktop')  # Get the path to the desktop
         excel_file_path = os.path.join(desktop_dir, 'media_data.xlsx')
 
-        # Write the DataFrame to the Excel file
-        df.to_excel(excel_file_path, index=False)
-        print(f"Excel sheet created: {excel_file_path}")
+        # Check if the Excel file exists
+        if os.path.exists(excel_file_path):
+            existing_df = pd.read_excel(excel_file_path) # Read the existing data
+            combined_df = pd.concat([existing_df, new_df], ignore_index=True) # Append the new data to the existing DataFrame
+        else:
+            combined_df = new_df # If the file does not exist, use the new data as the combined data
+
+        # Write the combined DataFrame to the Excel file
+        combined_df.to_excel(excel_file_path, index=False)
+        print(f"Excel sheet updated: {excel_file_path}")
 
     # work stuff
     track = 0
@@ -464,6 +469,7 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                 # Create a list of full file paths and sort them
                 new_valid_booklet_files = [file for file in os.listdir(bookletfolder)]
                 file_paths = [os.path.join(bookletfolder, file) for file in new_valid_booklet_files]
+                file_paths = [path for path in file_paths if not os.path.basename(path).lower().endswith(".ds_store")] # Skip processing for .DS_Store files
                 file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
                 print("Booklet processing done.\nBooklet will be opend automatically.\nContinue with renaming audio files in a second...")
                 time.sleep(0.5) # Pause the execution for half a second
@@ -539,18 +545,20 @@ mkms_bookletfiles(mydir, mediadir)
 
 # Check if booklet folder is not present and ask_for_box indicates part of a box set
 bookletstatus = os.path.join(mydir, 'booklet')
-debug = os.path.exists(bookletstatus)
-print(f"Booklet status: {debug}\nBox: {ask_for_box}")
+
+# # DEBUG
+# debug = os.path.exists(bookletstatus)
+# print(f"Booklet status: {debug}\nBox: {ask_for_box}") 
 
 if not os.path.exists(bookletstatus) and (ask_for_box == "y" or ask_for_box == ""):
-    time.sleep(1)
+    time.sleep(2)
     move_folder = input("\nDo you want to move the finished folder to another location? (y(Default)/n): ").strip().lower()
     check_exit(move_folder)
     while True:
         if move_folder == "y" or move_folder == "":
-            time.sleep(0.5)
+            time.sleep(2)
             destination_folder = filedialog.askdirectory() 
-            time.sleep(0.5) 
+            time.sleep(1) 
             if destination_folder:
                 # Move the finished media directory to the selected destination
                 try:
