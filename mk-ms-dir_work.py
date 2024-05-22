@@ -47,7 +47,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         if user_input.strip() == "":
             print("Empty input. Please provide a name.")
         elif len(user_input.strip()) == 1:
-            confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").lower()
+            confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
                 return user_input
@@ -192,10 +192,10 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
     while numberofcomposers == 0:
         yorn = input("Is the whole media from one composer? (y(Default)/n) ")
         check_exit(yorn)
-        if yorn.lower() == "y" or yorn == "":
+        if yorn.strip().lower() == "y" or yorn == "":
             numberofcomposers = 1
             composer = getcomposer()        
-        elif yorn.lower() == "n":
+        elif yorn.strip().lower() == "n":
             while True:
                 try:
                     numberofcomposers = int(input("How many composers are mentioned? "))
@@ -211,46 +211,53 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
 
     # Excel Sheet
     if (ask_for_box == "y" or ask_for_box == "") and str(cdnumber) != "1":
-        print("Skipping Excel sheet creation for subsequent discs.")
-    elif ask_for_box == "n" or (ask_for_box == "y" or ask_for_box == "") and str(cdnumber) == "1":
-        list_of_interpreters = getinterpreters() # Get an array of interpreters
-        medianumber = getmedianumber() # Get the four digit number writen on the CD cover later used as the counter in the excel sheet
-        today = datetime.today() 
-        formatted_date = today.strftime('%Y-%m-%d') # Get the date in YYYY-MM-DD
-        dir_name = os.path.basename(mydir) # Extract the directory name (last part of the path)
+        print("Skipping Excel sheet update for subsequent discs.")
+    else:
+        ask_to_skip = input("Press ENTER to continue or type 'skip' to proceed without updating the Excel sheet: ")
+        if ask_to_skip == "skip":
+            print("Skipping Excel sheet uptade.")
+        else: 
+            list_of_interpreters = getinterpreters() # Get an array of interpreters
+            medianumber = getmedianumber() # Get the four digit number writen on the CD cover later used as the counter in the excel sheet
+            today = datetime.today() 
+            formatted_date = today.strftime('%Y-%m-%d') # Get the date in YYYY-MM-DD
+            dir_name = os.path.basename(mydir) # Extract the directory name (last part of the path)
 
-        # Prepare the data for the Excel sheet
-        if numberofcomposers == 1:
-            composer_name = f"{composer[0]}, {composer[1]}"
-        else:
-            composer_name = 'Verschiedene'
+            # Prepare the data for the Excel sheet
+            if numberofcomposers == 1:
+                composer_name = f"{composer[0]}, {composer[1]}"
+            else:
+                composer_name = 'Verschiedene'
 
-        new_data = {
-                    'CD Number': [medianumber],
-                    'Composer': [composer_name],
-                    'Mediatitle': [mediatitle],
-                    'Interpreters': [', '.join(list_of_interpreters)],
-                    'Place': [dir_name],
-                    'Status': [""],
-                    'Date': [formatted_date],
-                    'Comment' : [""]
-                    }
-                    
-        # Create a DataFrame from the data and define the path for the Excel file on the desktop
-        new_df = pd.DataFrame(new_data)
-        desktop_dir = os.path.expanduser('~/Desktop')  # Get the path to the desktop
-        excel_file_path = os.path.join(desktop_dir, 'media_data.xlsx')
+            try:
+                new_data = {
+                            'CD Number': [medianumber],
+                            'Composer': [composer_name],
+                            'Mediatitle': [mediatitle],
+                            'Interpreters': [', '.join(list_of_interpreters)],
+                            'Place': [dir_name],
+                            'Status': [""],
+                            'Date': [formatted_date],
+                            'Comment' : [""]
+                            }
+                        
+                # Create a DataFrame from the data and define the path for the Excel file on the desktop
+                new_df = pd.DataFrame(new_data)
+                desktop_dir = os.path.expanduser('~/Desktop')  # Get the path to the desktop
+                excel_file_path = os.path.join(desktop_dir, 'Neues_Logbuch.xlsx')
 
-        # Check if the Excel file exists
-        if os.path.exists(excel_file_path):
-            existing_df = pd.read_excel(excel_file_path) # Read the existing data
-            combined_df = pd.concat([existing_df, new_df], ignore_index=True) # Append the new data to the existing DataFrame
-        else:
-            combined_df = new_df # If the file does not exist, use the new data as the combined data
+                # Check if the Excel file exists
+                if os.path.exists(excel_file_path):
+                    existing_df = pd.read_excel(excel_file_path) # Read the existing data
+                    combined_df = pd.concat([existing_df, new_df], ignore_index=True) # Append the new data to the existing DataFrame
+                else:
+                    combined_df = new_df # If the file does not exist, use the new data as the combined data
 
-        # Write the combined DataFrame to the Excel file
-        combined_df.to_excel(excel_file_path, index=False)
-        print(f"Excel sheet updated: {excel_file_path}")
+                # Write the combined DataFrame to the Excel file
+                combined_df.to_excel(excel_file_path, index=False)
+                print(f"Excel sheet updated: {excel_file_path}")
+            except Exception as e:
+                    print(f"\nError: {e}\nExcel sheet must be updated manually.")
 
     # work stuff
     track = 0
@@ -276,9 +283,9 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
 
         # multiple movements
         while True:
-            multimov = input("Does the work range over more than one audio track? (y/n(default)) ")
+            multimov = input("Does the work range over more than one audio track? (y/n(default)) ").strip().lower()
             check_exit(multimov)
-            if multimov.lower() == "y":
+            if multimov == "y":
                 track += 1
             
                 while True:
@@ -298,7 +305,7 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
 
                 if endtrack_input:
                     break
-            elif multimov.lower() == "n" or multimov.lower() == "":
+            elif multimov == "n" or multimov == "":
                 track += 1
                 endtrack = track
                 break
@@ -371,6 +378,25 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
                     print(f"Source file '{file_path}' not found. Skipping.")
                 
                 filenr += 1
+ 
+    # Create box
+    if (ask_for_box == "y" or ask_for_box == "") and os.path.exists(booklet_folder_status):
+        box = input("\nDo you want to create a folder for the box and move the folder to it? (y(Default)/n)").strip().lower()
+        if box == "y" or box == "":
+            parent_folder_path = os.path.dirname(workdir)
+            box_folder_name = os.path.basename(parent_folder_path).replace("._CD1", "")
+            box_folder_path = os.path.join(mydir, box_folder_name)
+            try:
+                os.makedirs(box_folder_path, exist_ok=True)
+                shutil.move(mediadir, box_folder_path)
+                print(f"Folder created and media directory successfully moved to: {box_folder_path}")
+                time.sleep(1)
+            except Exception as e:
+                print(f"An error occurred while creating or moving the folder: {e}")
+    elif box == "n":
+        print("Proceeding without creating a folder for the box.")
+    else: 
+        print("Invalid input. Please enter 'y' or 'n'.")            
 
     # summary
     print("\n")
@@ -410,9 +436,9 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
 
             # Ask the user to continue or delete the folder
             while True:
-                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ")
+                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ").strip().lower()
                 check_exit(ask_to_delete)
-                if ask_to_delete.lower() == "y":
+                if ask_to_delete == "y":
                     try:
                         shutil.rmtree(bookletfolder)
                         print("Booklet folder deleted.\n")
@@ -425,10 +451,10 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                 else:
                     print("Invalid input. Please enter 'y' or 'n'.")
             
-            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ")
+            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ").strip().lower()
             check_exit(ask_to_continue)
             while True:
-                if ask_to_continue.lower() == "y" or ask_to_continue.lower() == "":
+                if ask_to_continue == "y" or ask_to_continue == "":
                     break
                 elif ask_to_continue == "n":
                     sys.exit()
@@ -509,8 +535,8 @@ def mkms_bookletfiles(mydir, mediadir): # Function to handle the booklet
     elif sys.platform == "win32": # New booklet funtion for Windows user
         askbookdir = ""
         while True:
-            askbookdir = input("No booklet directory found. Do you want to create one? (y(Default)/n) ") 
-            if askbookdir.lower() == "y" or askbookdir == "": 
+            askbookdir = input("No booklet directory found. Do you want to create one? (y(Default)/n) ").strip().lower()
+            if askbookdir == "y" or askbookdir == "": 
                 os.mkdir(newbookletdir)
                 print("New booklet directory created ready to put files in.")
                 break
@@ -533,7 +559,7 @@ while True:
         print("\nChosen directory:", mydir)
         break
     else:
-        print("\nNo directory chosen. Please choose a directory.")
+        continue
 
 # Process booklet for Mac
 if sys.platform == "darwin":
@@ -552,9 +578,9 @@ bookletstatus = os.path.join(mydir, 'booklet')
 
 if not os.path.exists(bookletstatus) and (ask_for_box == "y" or ask_for_box == ""):
     time.sleep(2)
-    move_folder = input("\nDo you want to move the finished folder to another location? (y(Default)/n): ").strip().lower()
-    check_exit(move_folder)
     while True:
+        move_folder = input("\nDo you want to move the finished folder to another location? (y(Default)/n): ").strip().lower()
+        check_exit(move_folder)
         if move_folder == "y" or move_folder == "":
             time.sleep(2)
             destination_folder = filedialog.askdirectory() 
@@ -580,4 +606,4 @@ if sys.platform == "win32":
     input("Press ENTER to close: ")
 
 
-# 21-05-24
+# 22-05-24
