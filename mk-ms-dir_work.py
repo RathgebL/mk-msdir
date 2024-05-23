@@ -10,6 +10,7 @@
 ##                  default values for yes/no-questions
 ##                  filedialog for user input of working directory
 ##                  append data to excel sheet
+##                  creat box/find box and move folders to it
 ##                  booklet processing:
 ##                      - rotating
 ##                      - sharpening
@@ -23,6 +24,7 @@
 # --- importing
 import sys
 import os
+import re
 import shutil
 from tkinter import filedialog
 from PIL import Image, ImageFilter
@@ -66,6 +68,103 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 print("Invalid input. Please enter 'y' or 'n'.")
         else:
             return user_input  # Return valid input
+
+def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticly open booklet files (for Mac user)
+    bookletfolder = os.path.join(mydir, 'booklet')
+    if not os.path.exists(bookletfolder):
+        print("\nNo booklet folder found!")
+        return
+    else:
+        # Creat a list of valid booklet files
+        valid_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
+        if not valid_booklet_files:
+            print(f"\nNo valid files found in {bookletfolder}!")
+
+            # see if there are any files in the booklet folder
+            any_files_in_bookletfolder = [file for file in os.listdir(bookletfolder)]
+            num_files = len(any_files_in_bookletfolder)
+            if num_files >= 1:
+                print("List of files in " + bookletfolder + ":")
+                for file in any_files_in_bookletfolder:
+                    print(f"\tFilename: {file}")
+
+            # Ask the user to continue or delete the folder
+            while True:
+                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ").strip().lower()
+                check_exit(ask_to_delete)
+                if ask_to_delete == "y":
+                    try:
+                        shutil.rmtree(bookletfolder)
+                        print("Booklet folder deleted.\n")
+                        break
+                    except Exception as e:
+                        print(f"Error deleting the booklet folder: {e}")
+                        continue
+                elif ask_to_delete == "n" or ask_to_delete == "":
+                    break
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+            
+            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ").strip().lower()
+            check_exit(ask_to_continue)
+            while True:
+                if ask_to_continue == "y" or ask_to_continue == "":
+                    break
+                elif ask_to_continue == "n":
+                    sys.exit()
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+
+        else:
+            try:
+                valid_booklet_files.sort(key=lambda x:
+                    (
+                        x.startswith('booklet-b'),
+                        x.startswith('booklet'),
+                        int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
+                    )
+                    if x.lower().endswith(('.jpeg', '.jpg'))
+                    else (False, False, 0))
+
+                # Iterate through all files in the folder. Exclude already processed ones.
+                for filename in valid_booklet_files:
+                    if not filename.lower().startswith("processed_booklet"):
+                        original_file_path = os.path.join(bookletfolder, filename) # Full file path
+
+                        # Open the image
+                        try:
+                            image = Image.open(original_file_path)
+                        except Exception as e:
+                            print(f"Error opening {filename}: {e}")
+                            continue
+
+                        rotated_image = image.transpose(Image.Transpose.ROTATE_270) # Rotate the image to the right 
+                        sharpened_image = rotated_image.filter(ImageFilter.SHARPEN) # Adjust sharpness to the highest level
+                        processed_filename = f"processed_{filename}".replace(" ", "_") # Rename processed files
+                        processed_file_path = os.path.join(bookletfolder, processed_filename)
+                        sharpened_image.save(processed_file_path)
+                        print(f"Processed: {filename} -> {processed_filename}\tOriginal deleted")
+                        os.remove(original_file_path) # Delete the original unprocessed JPEG file immediately after processing
+
+                # Create a list of full file paths and sort them
+                new_valid_booklet_files = [file for file in os.listdir(bookletfolder)]
+                file_paths = [os.path.join(bookletfolder, file) for file in new_valid_booklet_files]
+                file_paths = [path for path in file_paths if not os.path.basename(path).lower().endswith(".ds_store")] # Skip processing for .DS_Store files
+                file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
+                print("Booklet processing done.\nBooklet will be opend automatically.\nContinue with renaming audio files in a second...")
+                time.sleep(0.5) # Pause the execution for half a second
+                subprocess.Popen(["open"] + file_paths) # Open all files in one window (Preview application)         
+
+            except FileNotFoundError:
+                return
+            
+def extract_number(filename): # Fuction to extracts the numeric portion from the filename
+    name = os.path.splitext(filename)[0]  # Remove the file extension
+    numeric_part = ''.join(filter(str.isdigit, name))
+    if numeric_part:
+        return int(numeric_part)
+    else:
+        return 0
 
 def getmedianumber(): # Function to get the four digit medianumber which is found on every CD cover
     while True:
@@ -127,7 +226,7 @@ def escape(string): # Function to get the desired form for the output
     
     return string
 
-def mkms_audiofiles(mydir): # Function to process audiofiles
+def main(mydir): # Function to process audiofiles, the booklet folder and boxes
     # audio file check
     allfiles = []
     for file in os.listdir(mydir):
@@ -144,7 +243,10 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
         allfiles.sort(key=str.lower)
 
     # box set check
-    booklet_folder_status = os.path.join(mydir, 'booklet')
+    bookletpath = os.path.join(mydir, 'booklet')
+    bookletstatus = 0
+    if os.path.exists(bookletpath):
+        bookletstatus = 1
     cdnumber = ""
 
     while True:
@@ -156,10 +258,10 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
             break
 
     # First CD of a box
-    if (ask_for_box == "y" or ask_for_box == "") and os.path.exists(booklet_folder_status):
+    if (ask_for_box == "y" or ask_for_box == "") and os.path.exists(bookletpath):
         cdnumber = 1
     
-    if not os.path.exists(booklet_folder_status):    
+    if not os.path.exists(bookletpath):    
         while True:
             if ask_for_box == "y" or ask_for_box == "":
                 try:
@@ -378,134 +480,8 @@ def mkms_audiofiles(mydir): # Function to process audiofiles
                     print(f"Source file '{file_path}' not found. Skipping.")
                 
                 filenr += 1
- 
-    # Create box
-    if (ask_for_box == "y" or ask_for_box == "") and os.path.exists(booklet_folder_status):
-        box = input("\nDo you want to create a folder for the box and move the folder to it? (y(Default)/n)").strip().lower()
-        if box == "y" or box == "":
-            parent_folder_path = os.path.dirname(workdir)
-            box_folder_name = os.path.basename(parent_folder_path).replace("._CD1", "")
-            box_folder_path = os.path.join(mydir, box_folder_name)
-            try:
-                os.makedirs(box_folder_path, exist_ok=True)
-                shutil.move(mediadir, box_folder_path)
-                print(f"Folder created and media directory successfully moved to: {box_folder_path}")
-                time.sleep(1)
-            except Exception as e:
-                print(f"An error occurred while creating or moving the folder: {e}")
-    elif box == "n":
-        print("Proceeding without creating a folder for the box.")
-    else: 
-        print("Invalid input. Please enter 'y' or 'n'.")            
 
-    # summary
-    print("\n")
-    for line in summary:
-        print(line)
-    #print(f"Interpreters: {list_of_interpreters}")
-
-    return (mediadir, ask_for_box)
-
-# booklet
-def extract_number(filename): # Fuction to extracts the numeric portion from the filename
-    name = os.path.splitext(filename)[0]  # Remove the file extension
-    numeric_part = ''.join(filter(str.isdigit, name))
-    if numeric_part:
-        return int(numeric_part)
-    else:
-        return 0
-
-def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticly open booklet files (for Mac user)
-    bookletfolder = os.path.join(mydir, 'booklet')
-    if not os.path.exists(bookletfolder):
-        print("\nNo booklet folder found!")
-        return
-    else:
-        # Creat a list of valid booklet files
-        valid_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
-        if not valid_booklet_files:
-            print(f"\nNo valid files found in {bookletfolder}!")
-
-            # see if there are any files in the booklet folder
-            any_files_in_bookletfolder = [file for file in os.listdir(bookletfolder)]
-            num_files = len(any_files_in_bookletfolder)
-            if num_files >= 1:
-                print("List of files in " + bookletfolder + ":")
-                for file in any_files_in_bookletfolder:
-                    print(f"\tFilename: {file}")
-
-            # Ask the user to continue or delete the folder
-            while True:
-                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ").strip().lower()
-                check_exit(ask_to_delete)
-                if ask_to_delete == "y":
-                    try:
-                        shutil.rmtree(bookletfolder)
-                        print("Booklet folder deleted.\n")
-                        break
-                    except Exception as e:
-                        print(f"Error deleting the booklet folder: {e}")
-                        continue
-                elif ask_to_delete == "n" or ask_to_delete == "":
-                    break
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")
-            
-            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ").strip().lower()
-            check_exit(ask_to_continue)
-            while True:
-                if ask_to_continue == "y" or ask_to_continue == "":
-                    break
-                elif ask_to_continue == "n":
-                    sys.exit()
-                else:
-                    print("Invalid input. Please enter 'y' or 'n'.")
-
-        else:
-            try:
-                valid_booklet_files.sort(key=lambda x:
-                    (
-                        x.startswith('booklet-b'),
-                        x.startswith('booklet'),
-                        int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else float('inf')
-                    )
-                    if x.lower().endswith(('.jpeg', '.jpg'))
-                    else (False, False, 0))
-
-                # Iterate through all files in the folder. Exclude already processed ones.
-                for filename in valid_booklet_files:
-                    if not filename.lower().startswith("processed_booklet"):
-                        original_file_path = os.path.join(bookletfolder, filename) # Full file path
-
-                        # Open the image
-                        try:
-                            image = Image.open(original_file_path)
-                        except Exception as e:
-                            print(f"Error opening {filename}: {e}")
-                            continue
-
-                        rotated_image = image.transpose(Image.Transpose.ROTATE_270) # Rotate the image to the right 
-                        sharpened_image = rotated_image.filter(ImageFilter.SHARPEN) # Adjust sharpness to the highest level
-                        processed_filename = f"processed_{filename}".replace(" ", "_") # Rename processed files
-                        processed_file_path = os.path.join(bookletfolder, processed_filename)
-                        sharpened_image.save(processed_file_path)
-                        print(f"Processed: {filename} -> {processed_filename}\tOriginal deleted")
-                        os.remove(original_file_path) # Delete the original unprocessed JPEG file immediately after processing
-
-                # Create a list of full file paths and sort them
-                new_valid_booklet_files = [file for file in os.listdir(bookletfolder)]
-                file_paths = [os.path.join(bookletfolder, file) for file in new_valid_booklet_files]
-                file_paths = [path for path in file_paths if not os.path.basename(path).lower().endswith(".ds_store")] # Skip processing for .DS_Store files
-                file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
-                print("Booklet processing done.\nBooklet will be opend automatically.\nContinue with renaming audio files in a second...")
-                time.sleep(0.5) # Pause the execution for half a second
-                subprocess.Popen(["open"] + file_paths) # Open all files in one window (Preview application)         
-
-            except FileNotFoundError:
-                return
-    
-
-def mkms_bookletfiles(mydir, mediadir): # Function to handle the booklet
+    # Booklet
     bookletdir = os.path.join(mydir, "booklet")
     newbookletdir = os.path.join(mediadir, "booklet")
     if os.path.exists(bookletdir):
@@ -529,8 +505,9 @@ def mkms_bookletfiles(mydir, mediadir): # Function to handle the booklet
                 os.rename(os.path.join(bookletdir, bookfile), os.path.join(bookletdir, newbookfile))
 
         # Move the booklet folder and give feedback
-        shutil.move(bookletdir, newbookletdir)
-        print(f"Moved booklet folder from {bookletdir} -> {newbookletdir}")
+        if ((ask_for_box == "y" or ask_for_box == "") and cdnumber != 1) or ask_for_box == "n":
+            shutil.move(bookletdir, newbookletdir)
+            print(f"Moved booklet folder from {bookletdir} -> {newbookletdir}")
     
     elif sys.platform == "win32": # New booklet funtion for Windows user
         askbookdir = ""
@@ -544,9 +521,66 @@ def mkms_bookletfiles(mydir, mediadir): # Function to handle the booklet
                 break
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
+ 
+    # Create box
+    boxname = os.path.basename(os.path.dirname(workdir))
+    boxname = re.sub(r'\._CD\d+$', '', boxname)
+    if (ask_for_box == "y" or ask_for_box == "") and bookletstatus == 1:
+        create_box = input("\nDo you want to create a box? (y(Default)/n) ").strip().lower()
+        if create_box == "y" or create_box == "":
+            boxname = boxname
+            boxpath = os.path.join(mydir, boxname)
+            try:
+                os.makedirs(boxpath, exist_ok=True)
+                shutil.move(mediadir, boxpath)
+                shutil.move(bookletdir, boxpath)
+                print(f"Folder created and media and booklet directory successfully moved to: {boxpath}")
+                time.sleep(1)
+            except Exception as e:
+                print(f"An error occurred while creating or moving the folder: {e}")
+        elif create_box == "n":
+            print("Proceeding without creating a folder for the box.")
+        else: 
+            print("Invalid input. Please enter 'y' or 'n'.")
+
+    # Move to box
+    if bookletstatus == 0 and (ask_for_box == "y" or ask_for_box == ""):
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        for folder in os.listdir(desktop):
+            if folder.startswith("audio") and os.path.isdir(os.path.join(desktop, folder)):
+                potential_folder = os.path.join(desktop, folder)
+                for subfolder in os.listdir(potential_folder):
+                    if subfolder == boxname and os.path.isdir(os.path.join(potential_folder, subfolder)):
+                        box = os.path.join(potential_folder, subfolder)
+                        while True:
+                            ask_to_move = input(f"Box found at: {box}\nDo you want to move the folder? (y(Default)/n) ")
+                            if ask_to_move == "y" or ask_to_move == "":
+                                try:
+                                    shutil.move(mediadir, box)
+                                    print("Folder successfully moved.")
+                                    break
+                                except Exception as e:
+                                    print(f"Error moving media directory: {e}")
+                            elif ask_to_move == "n":
+                                print("Folder not moved.")
+                                break
+                            else:
+                                print("Invalid input. Please enter 'y' or 'n'.")
+                    else:
+                        print("No box folder found.")
+
+    # summary
+    print("\nSummary:")
+    for line in summary:
+        print(line)
+    #print(f"Interpreters: {list_of_interpreters}")
+
+    return mediadir   
 
 
 # --- run
+
+# Preperation
 print("To quit at any time just type '!exit'.")
 print("To get the default value just press ENTER.")
 
@@ -565,45 +599,17 @@ while True:
 if sys.platform == "darwin":
     process_booklet(mydir)
 
-# booklet renaming
-mediadir, ask_for_box = mkms_audiofiles(mydir)
-mkms_bookletfiles(mydir, mediadir)
 
-# Check if booklet folder is not present and ask_for_box indicates part of a box set
-bookletstatus = os.path.join(mydir, 'booklet')
+# call main
+mediadir = main(mydir)
 
-# # DEBUG
-# debug = os.path.exists(bookletstatus)
-# print(f"Booklet status: {debug}\nBox: {ask_for_box}") 
 
-if not os.path.exists(bookletstatus) and (ask_for_box == "y" or ask_for_box == ""):
-    time.sleep(2)
-    while True:
-        move_folder = input("\nDo you want to move the finished folder to another location? (y(Default)/n): ").strip().lower()
-        check_exit(move_folder)
-        if move_folder == "y" or move_folder == "":
-            time.sleep(2)
-            destination_folder = filedialog.askdirectory() 
-            time.sleep(1) 
-            if destination_folder:
-                # Move the finished media directory to the selected destination
-                try:
-                    shutil.move(mediadir, destination_folder)
-                    print(f"Media directory moved to: {destination_folder}")
-                    break
-                except Exception as e:
-                    print(f"Error moving media directory: {e}")
-            else:
-                print("No destination folder selected. Media directory not moved.")
-        elif move_folder == "n":
-            print("Media directory not moved.")
-            break
-        else:
-            print("Invalid input. Please enter 'y' or 'n'.")
-
+# Last feedback
 if sys.platform == "win32":
     print("\nEverything done!")
     input("Press ENTER to close: ")
+else:
+    print("\nEverything done!")
 
 
 # 22-05-24
