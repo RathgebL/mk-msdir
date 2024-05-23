@@ -48,7 +48,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         check_exit(user_input)
         if user_input.strip() == "":
             print("Empty input. Please provide a name.")
-        elif len(user_input.strip()) == 1:
+        elif len(user_input.strip()) == 1 and not (user_input == "„" or user_input == "¡" or user_input == "“"): # Exeptions for shortcuts
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
@@ -457,7 +457,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
             for multimovnr in range(1, (int(work[4]) - int(work[3]) + 2)):
                 file = allfiles[filenr]
                 while True:
-                    movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")         
+                    movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")
                     if movtitle == prev_movtitle:  # Check if input is the same as previous one
                         confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
                         check_exit(confirm)
@@ -468,7 +468,17 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
                     else:
-                        prev_movtitle = movtitle  # Update prev_movtitle with current input
+                        prev_movtitle = movtitle  # Update prev_movtitle with current input before shortcuts
+                        # Shortcuts (don't forget to add them as exception in 'Def handle_input()')
+                        if movtitle == "„":
+                            movtitle = "Allegro"
+                            print("Shortcut applied. Name of movement changed to 'Allegro'.")
+                        elif movtitle == "¡":
+                            movtitle = "Andante"
+                            print("Shortcut applied. Name of movement changed to 'Andante'.")
+                        elif movtitle == "“":
+                            movtitle = "Adagio"
+                            print("Shortcut applied. Name of movement changed to 'Adagio'.")
                         break
 
                 file_path = os.path.join(mydir, file)  # Update file_path for each iteration
@@ -568,6 +578,8 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                                 print("Invalid input. Please enter 'y' or 'n'.")
                     else:
                         print("No box folder found.")
+    
+    # Confirm inputs
 
     # summary
     print("\nSummary:")
@@ -612,4 +624,4 @@ else:
     print("\nEverything done!")
 
 
-# 22-05-24
+# 23-05-24
