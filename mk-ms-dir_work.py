@@ -126,9 +126,9 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                     if x.lower().endswith(('.jpeg', '.jpg'))
                     else (False, False, 0))
 
-                # Iterate through all files in the folder. Exclude already processed ones.
+                # Iterate through all files in the folder. Exclude already processed ones from an unfinished run and from finished booklet folders for up to 999 booklet files.
                 for filename in valid_booklet_files:
-                    if not filename.lower().startswith("processed_booklet"):
+                    if not filename.lower().startswith("processed_booklet") and filename.lower().startswith("booklet0"): # Change here if booklet names after scanning changed to a differt format
                         original_file_path = os.path.join(bookletfolder, filename) # Full file path
 
                         # Open the image
@@ -179,12 +179,6 @@ def getmedianumber(): # Function to get the four digit medianumber which is foun
         except ValueError:
             print("Invalid input. Please enter a numeric value.")
 
-def getcomposer(): # Function to get the family and first name. (Middle name optional with first name)
-    while True:
-        lastname = handle_input("Family name of composer: ")
-        firstname = handle_input("First (and middle) name of composer: ")
-        return [lastname, firstname]
-    
 def getnumberofcomposers(): # Function to get number of composers
     numberofcomposers = 0
     while numberofcomposers == 0:
@@ -194,6 +188,7 @@ def getnumberofcomposers(): # Function to get number of composers
             numberofcomposers = 1
             composer = getcomposer()        
         elif yorn.strip().lower() == "n":
+            composer = [str, str] # define composer empty to avoid referencing before assignement
             while True:
                 try:
                     numberofcomposers = int(input("How many composers are mentioned? "))
@@ -208,7 +203,16 @@ def getnumberofcomposers(): # Function to get number of composers
             print("Invalid input. Please enter 'y' or 'n'.")
 
     return numberofcomposers, composer
-      
+
+def getcomposer(numberofcomposers): # Function to get the family and first name. (Middle name optional with first name)
+    while True:
+        lastname = handle_input("Family name of composer: ")
+        firstname = handle_input("First (and middle) name of composer: ")
+        if numberofcomposers > 1:
+            return (lastname, firstname)
+        else:
+            return [lastname, firstname]
+         
 def getinterpreters(): # Function to get number and names of interpreters
     # Get the number of interpreters
     while True:
@@ -368,93 +372,14 @@ def writeexcel(combined_df, excelpath): # Function to write to the combined Data
     except Exception as e:
         print(f"\nError: {e}\nExcel sheet must be updated manually.")
 
-def main(mydir): # Function to process audiofiles, the booklet folder and boxes
-   
-    # --- PART 1 ---
-
-    allfiles = files(mydir)
-    bookletstatus, cdnumber, askbox = boxcheck(mydir)
-    cdnumber = getcdnumber(askbox, bookletstatus, cdnumber)
-    mediatitle = getmediatitle(askbox, cdnumber)
-    numberofcomposers, composer = getnumberofcomposers()
-    current_date = datetime.now()
-    day = dateform(current_date)
-    audiodirname = dirname(mydir)
-
-
-    # Excel Sheet
-    if (askbox == "y" or askbox == "") and str(cdnumber) != "1":
-        print("Skipping Excel sheet update for subsequent discs.")
-        ask_to_skip = "skip"
-    else:
-        ask_to_skip = input("Press ENTER to continue or type 'skip' to proceed without updating the Excel sheet: ")
-        if ask_to_skip == "skip":
-            print("Skipping Excel sheet uptade.")
-        else:
-            interpreterlist, medianumber, composerlist = excelinfo(numberofcomposers, composer)
-            combined_df, excelpath, medianumber = excel(interpreterlist, composerlist, medianumber, day, audiodirname, mediatitle)
-
-    if ask_to_skip == "skip": # Define composer for case where Excel was skipped
-        composerlist = [composer[0], composer[1]]
-
-    # First Confirm
-    while True:
-        # review
-        print("\n----------------------------------\nReview your inputs:")
-        print(f"1. Mediatitle: {mediatitle}")
-        i = 0
-        highesti = 1
-        if numberofcomposers == 1:
-            highesti = 3
-            print(f"2. Family name of composer: {composerlist[0]}")
-            print(f"3. First (middle) name of composer: {composerlist[1]}")
-            if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
-                for i, interpreter in enumerate(interpreterlist, start=4):
-                    print(f"{i}. Name of interpreter: {interpreter}")
-                print(f"{i+1}. Number of media (four digits): {medianumber}")
-                highesti = i + 1
-
-        confirm = input("\nTo change an input, type its number or press ENTER to confirm: ").strip()
-        check_exit(confirm)
-
-        if confirm == "":
-            if not ask_to_skip == "skip":
-                updatedmediatitle = mediatitle
-                updatedmedianumber = medianumber
-                updatedcomposerlist = composerlist
-                updatedinterpreterlist = interpreterlist
-                combined_df, excelpath, medianumber = excel(updatedinterpreterlist, updatedcomposerlist, updatedmedianumber, day, folder, updatedmediatitle)
-                writeexcel(combined_df, excelpath)
-            print("")
-            break
-        elif confirm == "1":
-            mediatitle = handle_input("\nMediatitle: ")
-            if (askbox == "y" or askbox == ""):
-                mediatitle += f"._CD{str(cdnumber)}"
-                print(f"Box number successfully appended. New mediatitle: {mediatitle}")
-        elif confirm == '2' and numberofcomposers == 1:
-            composer[0] = handle_input("\nFamily name of composer: ")
-            composerlist = [composer[0], composer[1]]
-        elif confirm == '3' and numberofcomposers == 1:
-            composer[1] = handle_input("\nFirst (middle) name of composer: ")
-            composerlist = [composer[0], composer[1]]
-        elif confirm.isdigit() and (4 <= int(confirm) <= highesti) and ask_to_skip != "skip":
-            if int(confirm) == highesti:
-                medianumber = getmedianumber()
-            else:
-                interpreterlist[int(confirm) - 4] = handle_input(f"\nName of interpreter {int(confirm) - 3}: ")
-        else:
-            print("Invalid input. Please provide a number in range or press ENTER to confirm. ")
-
-    # --- PART 2 ---
-
+def getwork(allfiles, numberofcomposers, composer):
     # work stuff
     track = 0
     endtrack = 0
     works = []  # List to store information about works
     allcomposers = []   # only needed when composers between 2 and 4
     total_tracks = len(allfiles) # Get the number of available tracks
-
+    
     while endtrack < len(allfiles):
         
         # workname + composer
@@ -467,8 +392,11 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                 break
 
         if numberofcomposers > 1:
-            composer = getcomposer()
+            composer = getcomposer(numberofcomposers)
             allcomposers.append(composer)
+            allcomposers = list(set(allcomposers))
+            print(f"DEBUG: {allcomposers}")
+
 
         # multiple movements
         while True:
@@ -476,22 +404,19 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
             check_exit(multimov)
             if multimov == "y":
                 track += 1
-            
                 while True:
                     endtrack_input = input("It ranges from track " + str(track) + " to track... ")
                     check_exit(endtrack_input)
                     try:
                         endtrack = int(endtrack_input)
-
-                        # Check if the input is within the valid range
-                        if track <= endtrack <= total_tracks:
+                        if track <= endtrack <= total_tracks: # Check if the input is within the valid range
                             break
                         else:
                             print("Invalid input. End track is out of range.")
                             continue
                     except ValueError:
                         print("Invalid input. Please enter a numeric value.")
-
+                
                 if endtrack_input:
                     break
             elif multimov == "n" or multimov == "":
@@ -501,10 +426,12 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
             else:
                 print("Wrong input....")
 
-        works.append((composer[0], composer[1], workname, track, endtrack))
+        works.append([composer[0], composer[1], workname, track, endtrack])
         track = endtrack
 
-    # media directory
+    return works, allcomposers
+
+def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): # Function to get media directory
     mediadir = os.path.join(mydir, "")
     if numberofcomposers == 1:
         mediadir += composer[0] + "," + composer[1]
@@ -516,17 +443,20 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
         mediadir += composersfordir
 
     mediadir += "-" + escape(mediatitle)
-    os.mkdir(mediadir)
+    os.mkdir(mediadir) # Create folder (Familyname,Firstname-Mediatitle)
+    
+    return mediadir
 
-    # work directories
+def getworkdir(works, allfiles, mediadir): # Function for work directories
     filenr = 0
+    movlist = []
     summary = []
     prev_movtitle = None
 
     for work in works:
         workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))        
         try:
-            os.makedirs(workdir, exist_ok=True)
+            os.makedirs(workdir, exist_ok=True) # Create folder (Familyname,Firstname-Workname)
         except OSError as e:
             print(f"Failed to create directory '{workdir}': {e}")
 
@@ -534,7 +464,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
             file = allfiles[filenr]
             file_path = os.path.join(mydir, file)
             if os.path.exists(file_path):
-                filename = os.path.join(workdir, escape(work[0])) + "-" + escape(work[2]) + os.path.splitext(file)[1]
+                filename = os.path.join(workdir, escape(work[0])) + "-" + escape(work[2]) + os.path.splitext(file)[1] # Create filepath (/Users/Username/Desktop/mydir/Mediadir/Familyname,Firstname-Workname/Familyname-Workname.Fileextansion(wav))
                 summary.append(file + " -> " + filename)
                 shutil.move(file_path, filename)
             else:
@@ -568,6 +498,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                             print("Shortcut applied. Name of movement changed to 'Adagio'.")
                         break
 
+                movlist.append([int(filenr), movtitle, work[2]])
                 file_path = os.path.join(mydir, file)  # Update file_path for each iteration
                 if os.path.exists(file_path):
                     filename = os.path.join(workdir, escape(work[0])) + "-" + escape(work[2]) + "-%02d" % (multimovnr) + "-" + escape(movtitle) + os.path.splitext(file)[1]
@@ -577,8 +508,10 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                     print(f"Source file '{file_path}' not found. Skipping.")
                 
                 filenr += 1
+    
+    return workdir, movlist, summary
 
-    # Booklet
+def booklet(mydir, mediadir, askbox, cdnumber): # Function that handles the booklet
     bookletdir = os.path.join(mydir, "booklet")
     newbookletdir = os.path.join(mediadir, "booklet")
     if os.path.exists(bookletdir):
@@ -618,8 +551,10 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
                 break
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
- 
-    # Create box
+
+    return bookletdir
+
+def createbox(mydir, mediadir, workdir, askbox, bookletstatus, bookletdir): # Function to create folder for box
     boxname = os.path.basename(os.path.dirname(workdir))
     boxname = re.sub(r'\._CD\d+$', '', boxname)
     if (askbox == "y" or askbox == "") and bookletstatus == 1:
@@ -640,8 +575,9 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
         else: 
             print("Invalid input. Please enter 'y' or 'n'.")
 
-    # Move to box
-    if bookletstatus == 0 and (askbox == "y" or askbox == ""):
+    return boxname
+
+def movebox(boxname): # Funtion to move folder to box
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         for folder in os.listdir(desktop):
             if folder.startswith("audio") and os.path.isdir(os.path.join(desktop, folder)):
@@ -669,6 +605,178 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes
             print("\nNo box folder found. ")
         elif not subfolder == boxname:
             print("\nNo box folder found. ")
+
+def main(mydir): # Function to process audiofiles, the booklet folder and boxes and update to excel file
+    allfiles = files(mydir)
+    bookletstatus, cdnumber, askbox = boxcheck(mydir)
+    cdnumber = getcdnumber(askbox, bookletstatus, cdnumber)
+    mediatitle = getmediatitle(askbox, cdnumber)
+    numberofcomposers, composer = getnumberofcomposers()
+    current_date = datetime.now()
+    day = dateform(current_date)
+    audiodirname = dirname(mydir)
+
+    # Excel Sheet
+    if (askbox == "y" or askbox == "") and str(cdnumber) != "1":
+        print("Skipping Excel sheet update for subsequent discs.")
+        ask_to_skip = "skip"
+    else:
+        ask_to_skip = input("Press ENTER to continue or type 'skip' to proceed without updating the Excel sheet: ").strip().lower()
+        if ask_to_skip == "skip":
+            print("Skipping Excel sheet uptade.")
+        else:
+            interpreterlist, medianumber, composerlist = excelinfo(numberofcomposers, composer)
+            combined_df, excelpath, medianumber = excel(interpreterlist, composerlist, medianumber, day, audiodirname, mediatitle)
+
+    if ask_to_skip == "skip": # Define composer for case where Excel was skipped
+        composerlist = [composer[0], composer[1]]
+
+    # 1. Confirm input
+    while True:
+        # review
+        print("\n----------------------------------\nReview your inputs:")
+        print(f"1. Mediatitle: {mediatitle}")
+        i = 0
+        if numberofcomposers == 1:
+            highesti = 3
+            print(f"2. Family name of composer: {composerlist[0]}")
+            print(f"3. First (middle) name of composer: {composerlist[1]}")
+            if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
+                for i, interpreter in enumerate(interpreterlist, start=4):
+                    print(f"{i}. Edit name of interpreter: {interpreter}")
+                print(f"{i+1}. Edit number of media (four digits): {medianumber}")
+                highesti = i + 1
+        else:
+            highesti = 2
+            print(f"2. Number of composer: {numberofcomposers}")
+            if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
+                for i, interpreter in enumerate(interpreterlist, start=4):
+                    print(f"{i}. Name of interpreter: {interpreter}")
+                print(f"{i+1}. Number of media (four digits): {medianumber}")
+                highesti = i + 1
+
+        confirm1 = input("\nTo change an input, type its number or press ENTER to confirm: ").strip()
+        check_exit(confirm1)
+
+        if confirm1 == "":
+            if not ask_to_skip == "skip":
+                if numberofcomposers < 1:
+                    composerlist = "Verschiedene"
+                updatedmediatitle = mediatitle
+                updatedmedianumber = medianumber
+                updatedcomposerlist = composerlist
+                updatedinterpreterlist = interpreterlist
+                combined_df, excelpath, medianumber = excel(updatedinterpreterlist, updatedcomposerlist, updatedmedianumber, day, audiodirname, updatedmediatitle)
+                writeexcel(combined_df, excelpath)                
+            print("")
+            break
+        elif confirm1 == "1":
+            mediatitle = handle_input("Edit mediatitle: ")
+            if (askbox == "y" or askbox == ""):
+                mediatitle += f"._CD{str(cdnumber)}"
+                print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+        elif confirm1 == '2' and numberofcomposers == 1:
+            composer[0] = handle_input("Edit family name of composer: ")
+            composerlist = [composer[0], composer[1]]
+        elif confirm1 == '2' and numberofcomposers > 1:
+            try:
+                numberofcomposers = int(input("Edit number of composers: "))
+                check_exit(numberofcomposers)
+                if numberofcomposers < 2:
+                    print("Invalid input. Please enter a number greater than 1.")
+                else:
+                    break
+            except ValueError:
+                print("Invalid input. Please enter a numeric value.")
+        elif confirm1 == '3' and numberofcomposers == 1:
+            composer[1] = handle_input("Edit first (middle) name of composer: ")
+            composerlist = [composer[0], composer[1]]
+        elif confirm1.isdigit() and (4 <= int(confirm1) <= highesti) and ask_to_skip != "skip":
+            if int(confirm1) == highesti:
+                medianumber = getmedianumber()
+            else:
+                interpreterlist[int(confirm1) - 4] = handle_input(f" Edit name of interpreter {int(confirm1) - 3}: ")
+        else:
+            print("Invalid input. Please provide a number in range or press ENTER to confirm. ")
+
+    # --- PART 2 ---
+
+    # Process works
+    works, allcomposers = getwork(allfiles, numberofcomposers, composer)
+    mediadir = getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle)
+    workdir, movlist, summary = getworkdir(works, allfiles, mediadir)
+
+    # 2. Confirm input
+    while True:
+        print("\n----------------------------------\nReview your inputs:")
+        w = 0
+        m = 0
+        confirmnum = 0
+        if numberofcomposers == 1:
+            print("Works:")
+            for w, work in enumerate(works, start=1):
+                if work[3] < work[4]:
+                    print(f"W{w}. Work: {work[2]} (Track {work[3]} - {work[4]})")
+                else:
+                    print(f"W{w}. Work: {work[2]} (Track {work[3]})")
+                highestw = w
+
+            if movlist:
+                print("Movements:")
+                for m, mov in enumerate(movlist, start=1):
+                    print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
+                    highestm = m
+        else:
+            print("Works:")
+            for w, work in enumerate(works, start=1):
+                if work[3] < work[4]:
+                    print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]} - {work[4]})")
+                else:
+                    print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]})")
+                highestw = w
+
+            if movlist:
+                print("Movements:")
+                for m, mov in enumerate(movlist, start=1):
+                    print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
+                    highestm = m
+        
+        if numberofcomposers > 1:
+            confirm2 = str(input(
+                "\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm:"
+                "\nIf you want to change a composers name put a 'n' for name im front: "
+                )).strip().lower()
+        else:
+            confirm2 = str(input("\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm: ")).strip().lower()
+        check_exit(confirm2)
+        confirmnum = ''.join([char for char in confirm2 if char.isdigit()])
+
+        if confirm2 == "":
+            print("Hier müssten jetzt aktuellen daten auf tie ordner und tracks geschrieben werden")
+            break
+        elif confirm2.startswith("w") and 0 < int(confirmnum) <= highestw: # Change works
+            index = int(confirmnum) - 1
+            works[index][2] = handle_input(f"Edit {works[index][2]} to: ")
+        elif numberofcomposers > 1 and confirm2.startswith("nw") and 0 < int(confirmnum) <= highestw:
+            index = int(confirmnum) - 1
+            works[index][0] = handle_input(f"Edit family name of composer of {works[index][2]}: ")
+            works[index][1] = handle_input(f"Edit fist name of composer of {works[index][2]}: ")
+        elif confirm2.startswith("m") and 0 < int(confirmnum) <= highestm: # Change movements
+            index = int(confirmnum) - 1
+            movlist[index][1] = handle_input(f"Edit name of movement: ")
+        else:
+            print("Invalid input. Please provide a character and number (example: w1) in range or press ENTER to confirm. ")
+
+
+    # Call booklet function
+    bookletdir = booklet(mydir, mediadir, askbox, cdnumber)
+ 
+    # Call create box funtion
+    boxname = createbox(mydir, mediadir, workdir, askbox, bookletstatus, bookletdir)
+
+    # Call move to box function
+    if bookletstatus == 0 and (askbox == "y" or askbox == ""):
+        movebox(boxname)
 
     # summary
     print("\nSummary:")
