@@ -48,7 +48,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         check_exit(user_input)
         if user_input.strip() == "":
             print("Empty input. Please provide a name.")
-        elif len(user_input.strip()) == 1 and not (user_input == "„" or user_input == "¡" or user_input == "“"): # Exeptions for shortcuts
+        elif len(user_input.strip()) == 1 and not (user_input == "¡" or user_input == "“" or user_input == "¶"): # Exeptions for shortcuts
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
@@ -74,9 +74,13 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
     if not os.path.exists(bookletfolder):
         print("\nNo booklet folder found!")
         return
+    susbooklet = any(file.lower().startswith("booklet0") for file in os.listdir(bookletfolder)) # Check if any file in the booklet folder starts with "booklet0"
+    if susbooklet: # Exclude folders that probably are already finished
+        print("Finished booklet spotted. Please check the folder.\nContinuing without booklet processing...")
+        return
     else:
         # Creat a list of valid booklet files
-        valid_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().endswith((".jpeg", ".jpg"))]
+        valid_booklet_files = [file for file in os.listdir(bookletfolder) if not file.lower().startswith("processed_booklet") and file.lower().endswith((".jpeg", ".jpg"))]
         if not valid_booklet_files:
             print(f"\nNo valid files found in {bookletfolder}!")
 
@@ -111,10 +115,10 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                 if ask_to_continue == "y" or ask_to_continue == "":
                     break
                 elif ask_to_continue == "n":
+                    print("Program exited.")
                     sys.exit()
                 else:
                     print("Invalid input. Please enter 'y' or 'n'.")
-
         else:
             try:
                 valid_booklet_files.sort(key=lambda x:
@@ -125,10 +129,10 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                     )
                     if x.lower().endswith(('.jpeg', '.jpg'))
                     else (False, False, 0))
-
+            
                 # Iterate through all files in the folder. Exclude already processed ones from an unfinished run and from finished booklet folders for up to 999 booklet files.
                 for filename in valid_booklet_files:
-                    if not filename.lower().startswith("processed_booklet") and filename.lower().startswith("booklet0"): # Change here if booklet names after scanning changed to a differt format
+                    if not filename.lower().startswith("processed_booklet") and not filename.lower().startswith("booklet0"): # Change here if booklet names after scanning changed to a differt format
                         original_file_path = os.path.join(bookletfolder, filename) # Full file path
 
                         # Open the image
@@ -179,6 +183,13 @@ def getmedianumber(): # Function to get the four digit medianumber which is foun
         except ValueError:
             print("Invalid input. Please enter a numeric value.")
 
+def getcomposer(): # Function to get the family and first name. (Middle name optional with first name)
+    while True:
+        firstname = handle_input("First (and middle) name of composer: ")
+        lastname = handle_input("Family name of composer: ")
+        
+        return [lastname, firstname]
+    
 def getnumberofcomposers(): # Function to get number of composers
     numberofcomposers = 0
     while numberofcomposers == 0:
@@ -203,15 +214,6 @@ def getnumberofcomposers(): # Function to get number of composers
             print("Invalid input. Please enter 'y' or 'n'.")
 
     return numberofcomposers, composer
-
-def getcomposer(numberofcomposers): # Function to get the family and first name. (Middle name optional with first name)
-    while True:
-        lastname = handle_input("Family name of composer: ")
-        firstname = handle_input("First (and middle) name of composer: ")
-        if numberofcomposers > 1:
-            return (lastname, firstname)
-        else:
-            return [lastname, firstname]
          
 def getinterpreters(): # Function to get number and names of interpreters
     # Get the number of interpreters
@@ -392,10 +394,10 @@ def getwork(allfiles, numberofcomposers, composer):
                 break
 
         if numberofcomposers > 1:
-            composer = getcomposer(numberofcomposers)
+            composer = getcomposer()
             allcomposers.append(composer)
-            allcomposers = list(set(allcomposers))
-            print(f"DEBUG: {allcomposers}")
+            allcomposers = list(set(tuple(comp) for comp in allcomposers))
+            # print(f"DEBUG: {allcomposers}")
 
 
         # multiple movements
@@ -486,14 +488,13 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                             print("Invalid input. Please enter 'y' or 'n'.")
                     else:
                         prev_movtitle = movtitle  # Update prev_movtitle with current input before shortcuts
-                        # Shortcuts (don't forget to add them as exception in 'Def handle_input()')
-                        if movtitle == "„":
+                        if movtitle == "¡":
                             movtitle = "Allegro"
                             print("Shortcut applied. Name of movement changed to 'Allegro'.")
-                        elif movtitle == "¡":
+                        elif movtitle == "“":
                             movtitle = "Andante"
                             print("Shortcut applied. Name of movement changed to 'Andante'.")
-                        elif movtitle == "“":
+                        elif movtitle == "¶":
                             movtitle = "Adagio"
                             print("Shortcut applied. Name of movement changed to 'Adagio'.")
                         break
@@ -577,7 +578,7 @@ def createbox(mydir, mediadir, workdir, askbox, bookletstatus, bookletdir): # Fu
 
     return boxname
 
-def movebox(boxname): # Funtion to move folder to box
+def movebox(mediadir, boxname): # Funtion to move folder to box
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         for folder in os.listdir(desktop):
             if folder.startswith("audio") and os.path.isdir(os.path.join(desktop, folder)):
@@ -776,7 +777,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 
     # Call move to box function
     if bookletstatus == 0 and (askbox == "y" or askbox == ""):
-        movebox(boxname)
+        movebox(mediadir, boxname)
 
     # summary
     print("\nSummary:")
@@ -790,16 +791,20 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 # --- run
 
 # Preperation
-print("To quit at any time just type '!exit'.")
+print("\nTo quit at any time just type '!exit'.")
 print("To get the default value just press ENTER.")
+print("Shortcuts:\n\ttype '¡' (opt + 1) for Allegro\n\ttype '“' (opt + 2) for Andante\n\ttype '¶' (opt + 3) for Adagio\n")
 
 while True:
     # Ask for directory
     mydir = filedialog.askdirectory()
+    basenamemydir = os.path.basename(mydir)
+    tracks = len([file for file in os.listdir(mydir) if file.lower().endswith(".wav")])
 
     # Check if directory is not empty
-    if mydir and mydir != '/':
+    if mydir != '/':
         print("\nChosen directory:", mydir)
+        print(f"Number of files in {basenamemydir}: {tracks}\n")
         break
     else:
         continue
@@ -821,4 +826,4 @@ else:
     print("\nEverything done!")
 
 
-# 24-05-24
+# 29-05-24
