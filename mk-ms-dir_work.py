@@ -186,7 +186,22 @@ def getmedianumber(): # Function to get the four digit medianumber which is foun
 def getcomposer(): # Function to get the family and first name. (Middle name optional with first name)
     while True:
         firstname = handle_input("First (and middle) name of composer: ")
-        lastname = handle_input("Family name of composer: ")
+        
+        if firstname.strip().lower() == "none":
+            firstname = ""
+            while True:
+                anonyme = input("Should 'Anonymous' be taken as lastname? (y(Default)/n) ")
+                if anonyme.strip().lower() == "" or anonyme.strip().lower() == "y":
+                    lastname = "Anonymous"
+                    break
+                elif anonyme.strip().lower() == "n":
+                    lastname = handle_input("Family name of composer: ")
+                    break
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+                    continue
+        else:
+            lastname = handle_input("Family name of composer: ")
         
         return [lastname, firstname]
     
@@ -456,7 +471,11 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
     prev_movtitle = None
 
     for work in works:
-        workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))        
+        if not work [0] == "Anonymous":
+            workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
+        else:
+            workdir = os.path.join(mediadir, escape(work[0]) + "-" + escape(work[2])) # leaves out the "," and first name if the composer is not known
+
         try:
             os.makedirs(workdir, exist_ok=True) # Create folder (Familyname,Firstname-Workname)
         except OSError as e:
@@ -708,65 +727,65 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     workdir, movlist, summary = getworkdir(works, allfiles, mediadir)
 
     # 2. Confirm input
-    while True:
-        print("\n----------------------------------\nReview your inputs:")
-        w = 0
-        m = 0
-        confirmnum = 0
-        if numberofcomposers == 1:
-            print("Works:")
-            for w, work in enumerate(works, start=1):
-                if work[3] < work[4]:
-                    print(f"W{w}. Work: {work[2]} (Track {work[3]} - {work[4]})")
-                else:
-                    print(f"W{w}. Work: {work[2]} (Track {work[3]})")
-                highestw = w
+    # while True:
+    #     print("\n----------------------------------\nReview your inputs:")
+    #     w = 0
+    #     m = 0
+    #     confirmnum = 0
+    #     if numberofcomposers == 1:
+    #         print("Works:")
+    #         for w, work in enumerate(works, start=1):
+    #             if work[3] < work[4]:
+    #                 print(f"W{w}. Work: {work[2]} (Track {work[3]} - {work[4]})")
+    #             else:
+    #                 print(f"W{w}. Work: {work[2]} (Track {work[3]})")
+    #             highestw = w
 
-            if movlist:
-                print("Movements:")
-                for m, mov in enumerate(movlist, start=1):
-                    print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
-                    highestm = m
-        else:
-            print("Works:")
-            for w, work in enumerate(works, start=1):
-                if work[3] < work[4]:
-                    print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]} - {work[4]})")
-                else:
-                    print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]})")
-                highestw = w
+    #         if movlist:
+    #             print("Movements:")
+    #             for m, mov in enumerate(movlist, start=1):
+    #                 print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
+    #                 highestm = m
+    #     else:
+    #         print("Works:")
+    #         for w, work in enumerate(works, start=1):
+    #             if work[3] < work[4]:
+    #                 print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]} - {work[4]})")
+    #             else:
+    #                 print(f"W{w}. Work: {work[2]} by {work[1]} {work[0]} (Track {work[3]})")
+    #             highestw = w
 
-            if movlist:
-                print("Movements:")
-                for m, mov in enumerate(movlist, start=1):
-                    print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
-                    highestm = m
+    #         if movlist:
+    #             print("Movements:")
+    #             for m, mov in enumerate(movlist, start=1):
+    #                 print(f"M{m}. Movement of {mov[2]}: {mov[1]} (Track {mov[0] + 1})")
+    #                 highestm = m
         
-        if numberofcomposers > 1:
-            confirm2 = str(input(
-                "\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm:"
-                "\nIf you want to change a composers name put a 'n' for name im front: "
-                )).strip().lower()
-        else:
-            confirm2 = str(input("\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm: ")).strip().lower()
-        check_exit(confirm2)
-        confirmnum = ''.join([char for char in confirm2 if char.isdigit()])
+    #     if numberofcomposers > 1:
+    #         confirm2 = str(input(
+    #             "\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm:"
+    #             "\nIf you want to change a composers name put a 'n' for name im front: "
+    #             )).strip().lower()
+    #     else:
+    #         confirm2 = str(input("\nType 'w' for work, 'm' for movement and the number of the item you want to change or press ENTER to confirm: ")).strip().lower()
+    #     check_exit(confirm2)
+    #     confirmnum = ''.join([char for char in confirm2 if char.isdigit()])
 
-        if confirm2 == "":
-            print("Hier müssten jetzt aktuellen daten auf tie ordner und tracks geschrieben werden")
-            break
-        elif confirm2.startswith("w") and 0 < int(confirmnum) <= highestw: # Change works
-            index = int(confirmnum) - 1
-            works[index][2] = handle_input(f"Edit {works[index][2]} to: ")
-        elif numberofcomposers > 1 and confirm2.startswith("nw") and 0 < int(confirmnum) <= highestw:
-            index = int(confirmnum) - 1
-            works[index][0] = handle_input(f"Edit family name of composer of {works[index][2]}: ")
-            works[index][1] = handle_input(f"Edit fist name of composer of {works[index][2]}: ")
-        elif confirm2.startswith("m") and 0 < int(confirmnum) <= highestm: # Change movements
-            index = int(confirmnum) - 1
-            movlist[index][1] = handle_input(f"Edit name of movement: ")
-        else:
-            print("Invalid input. Please provide a character and number (example: w1) in range or press ENTER to confirm. ")
+    #     if confirm2 == "":
+    #         print("Hier müssten jetzt aktuellen daten auf tie ordner und tracks geschrieben werden")
+    #         break
+    #     elif confirm2.startswith("w") and 0 < int(confirmnum) <= highestw: # Change works
+    #         index = int(confirmnum) - 1
+    #         works[index][2] = handle_input(f"Edit {works[index][2]} to: ")
+    #     elif numberofcomposers > 1 and confirm2.startswith("nw") and 0 < int(confirmnum) <= highestw:
+    #         index = int(confirmnum) - 1
+    #         works[index][0] = handle_input(f"Edit family name of composer of {works[index][2]}: ")
+    #         works[index][1] = handle_input(f"Edit fist name of composer of {works[index][2]}: ")
+    #     elif confirm2.startswith("m") and 0 < int(confirmnum) <= highestm: # Change movements
+    #         index = int(confirmnum) - 1
+    #         movlist[index][1] = handle_input(f"Edit name of movement: ")
+    #     else:
+    #         print("Invalid input. Please provide a character and number (example: w1) in range or press ENTER to confirm. ")
 
 
     # Call booklet function
@@ -826,4 +845,4 @@ else:
     print("\nEverything done!")
 
 
-# 29-05-24
+# 12-08-24
