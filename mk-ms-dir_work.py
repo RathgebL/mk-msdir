@@ -46,19 +46,60 @@ def handle_input(prompt): # Function to check for empty, single character and lo
     while True:
         user_input = str(input(prompt).strip())
         check_exit(user_input)
+       
+        exceptions = {"!exit", "none", "!changeprev", "¡", "“", "¶"} # List of exceptions that should bypass the lowercase check
+        if user_input.lower() in exceptions:
+            return user_input
+        
         if user_input.strip() == "":
-            print("Empty input. Please provide a name.")
-        elif len(user_input.strip()) == 1 and not (user_input == "¡" or user_input == "“" or user_input == "¶"): # Exeptions for shortcuts
+            print("Empty input not possible!")
+            continue
+        
+        if len(user_input.strip()) == 1: # Check for single character inputs and lowercase
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
+                if user_input[0].islower():
+                    confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
+                    check_exit(confirm)
+                    if confirm == "n":
+                        return user_input
+                    elif confirm == "y" or confirm == "":
+                        continue
+                    else:
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        continue
                 return user_input
-            elif confirm == "y" or confirm == "":
+            elif confirm in {"y", ""}:
                 continue
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
-        elif user_input.strip().islower():
-            confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").lower()
+                continue
+
+        if not user_input.isupper() and any(c.isupper() for c in user_input[1:]): # check for inputs with uppercase characters in the middle and lowercase at the start
+            confirm = input("Your input contains uppercase letters in the middle. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+            check_exit(confirm)
+            if confirm == "y" or confirm == "":
+                user_input = user_input[0] + user_input[1:].lower()
+                print(f"input has been changed to: '{user_input}'")
+                if user_input[0].islower():
+                    confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
+                    check_exit(confirm)
+                    if confirm == "n":
+                        return user_input
+                    elif confirm == "y" or confirm == "":
+                        continue
+                    else:
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        continue
+                else:
+                    return user_input
+            elif not confirm == "n":
+                print("Invalid input. Please enter 'y' or 'n'.")
+                continue
+        
+        if user_input[0].islower() and user_input.lower() not in exceptions: # check for lowercase input
+            confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
                 return user_input
@@ -66,8 +107,9 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 continue
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
-        else:
-            return user_input  # Return valid input
+                continue
+
+        return user_input
 
 def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticly open booklet files (for Mac user)
     bookletfolder = os.path.join(mydir, 'booklet')
@@ -111,8 +153,12 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
             
             ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ").strip().lower()
             check_exit(ask_to_continue)
+            processed_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().startswith("processed_booklet") and file.lower().endswith((".jpeg", ".jpg"))]
             while True:
                 if ask_to_continue == "y" or ask_to_continue == "":
+                    file_paths = [os.path.join(bookletfolder, file) for file in processed_booklet_files]
+                    file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
+                    subprocess.Popen(["open"] + file_paths) # Open all files in one window (Preview application)
                     break
                 elif ask_to_continue == "n":
                     print("Program exited.")
@@ -471,7 +517,7 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
     prev_movtitle = None
 
     for work in works:
-        if not work [0] == "Anonymous":
+        if not work[0] == "Anonymous":
             workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
         else:
             workdir = os.path.join(mediadir, escape(work[0]) + "-" + escape(work[2])) # leaves out the "," and first name if the composer is not known
@@ -845,4 +891,4 @@ else:
     print("\nEverything done!")
 
 
-# 12-08-24
+# 29-05-24
