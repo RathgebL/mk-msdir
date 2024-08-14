@@ -47,7 +47,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         user_input = str(input(prompt).strip())
         check_exit(user_input)
        
-        exceptions = {"!exit", "none", "!changeprev", "¡", "“", "¶"}
+        exceptions = {"!exit", "none", "ebd", "¡", "“", "¶"}
         if user_input.lower() in exceptions:
             return user_input
         
@@ -237,7 +237,7 @@ def getmedianumber(): # Function to get the four digit medianumber which is foun
         except ValueError:
             print("Invalid input. Please enter a numeric value.")
 
-def getcomposer(): # Function to get the family and first name. (Middle name optional with first name)
+def getcomposer(): # Function to get the family and first name. (Middle name optional with first name)   
     while True:
         firstname = handle_input("First (and middle) name of composer: ")
         
@@ -255,9 +255,12 @@ def getcomposer(): # Function to get the family and first name. (Middle name opt
                 else:
                     print("Invalid input. Please enter 'y' or 'n'.")
                     continue
+        elif firstname.strip().lower() == "ebd":
+            print("Input set to previous composer:")
+            lastname = "l-ebd"
         else:
             lastname = handle_input("Family name of composer: ")
-        
+
         return [lastname, firstname]
     
 def getnumberofcomposers(): # Function to get number of composers
@@ -449,8 +452,10 @@ def getwork(allfiles, numberofcomposers, composer):
     track = 0
     endtrack = 0
     works = []  # List to store information about works
+    composers = [] # List to store composer names
     allcomposers = []   # only needed when composers between 2 and 4
     total_tracks = len(allfiles) # Get the number of available tracks
+    
     
     while endtrack < len(allfiles):
         
@@ -465,9 +470,14 @@ def getwork(allfiles, numberofcomposers, composer):
 
         if numberofcomposers > 1:
             composer = getcomposer()
-            allcomposers.append(composer)
+            composers.append(composer) # List of composer names (lastname, firstname) as put in (doubles possible)
+            if len(composers) > 1 and composers[-1][1] == "ebd":
+                composer = composers[-2]
+                composers[-1] = composers [-2]
+                print(f"\tFirst name: {composers[1][1]}\n\tLast name: {composers[1][0]}")
+            
+            allcomposers.append(composer) # List of composers. No doubles
             allcomposers = list(set(tuple(comp) for comp in allcomposers))
-            # print(f"DEBUG: {allcomposers}")
 
 
         # multiple movements
@@ -524,6 +534,7 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
     movlist = []
     summary = []
     prev_movtitle = None
+    
 
     for work in works:
         if not work[0] == "Anonymous":
