@@ -47,7 +47,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         user_input = str(input(prompt).strip())
         check_exit(user_input)
        
-        exceptions = {"!exit", "none", "!changeprev", "¡", "“", "¶"} # List of exceptions that should bypass the lowercase check
+        exceptions = {"!exit", "none", "!changeprev", "¡", "“", "¶"}
         if user_input.lower() in exceptions:
             return user_input
         
@@ -76,30 +76,36 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 print("Invalid input. Please enter 'y' or 'n'.")
                 continue
 
-        if not user_input.isupper() and any(c.isupper() for c in user_input[1:]): # check for inputs with uppercase characters in the middle and lowercase at the start
-            confirm = input("Your input contains uppercase letters in the middle. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
-            check_exit(confirm)
-            if confirm == "y" or confirm == "":
-                user_input = user_input[0] + user_input[1:].lower()
-                print(f"input has been changed to: '{user_input}'")
-                if user_input[0].islower():
-                    confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
+        while True: # Check for uppercase characters in the moddle of words
+            words = user_input.split()
+            char_exceptions = { "„","\"", "\'", "‚", "\‘" "-", "(", "/"}
+            for i, word in enumerate(words):
+                if not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
+                    confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
                     check_exit(confirm)
-                    if confirm == "n":
-                        return user_input
-                    elif confirm == "y" or confirm == "":
-                        continue
-                    else:
+                    if word[0] not in char_exceptions and (confirm == "y" or confirm == ""):
+                        updated_word = word[0] + word[1:].lower()
+                        words[i] = updated_word
+                        print(f"The word '{word}' has been changed to: '{updated_word}'")
+                    elif not confirm == "n":
                         print("Invalid input. Please enter 'y' or 'n'.")
                         continue
-                else:
-                    return user_input
-            elif not confirm == "n":
-                print("Invalid input. Please enter 'y' or 'n'.")
-                continue
+                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
+                    confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                    check_exit(confirm)
+                    if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
+                        updated_word = word[0] + word[1] + word[2:].lower()
+                        words[i] = updated_word
+                        print(f"The word '{word}' has been changed to: '{updated_word}'")
+                    elif not confirm == "n":
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        continue
+
+            user_input = ' '.join(words)  # Reconstruct the user input from the modified words list
+            break
         
-        if user_input[0].islower() and user_input.lower() not in exceptions: # check for lowercase input
-            confirm = input("Lower case input. A capital letter to start the name would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
+        if user_input[0].islower(): # check for lowercase input
+            confirm = input("Lower case input. A capital letter at the start would be preferred. Would you like to change your input? (y(Default)/n) ").strip().lower()
             check_exit(confirm)
             if confirm == "n":
                 return user_input
@@ -156,8 +162,10 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
             processed_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().startswith("processed_booklet") and file.lower().endswith((".jpeg", ".jpg"))]
             while True:
                 if ask_to_continue == "y" or ask_to_continue == "":
+                    print("Booklet will be opend automatically.\nContinue with renaming audio files in a second...")
                     file_paths = [os.path.join(bookletfolder, file) for file in processed_booklet_files]
                     file_paths.sort(key=lambda x: int(''.join(filter(str.isdigit, os.path.basename(x)))) if any(char.isdigit() for char in os.path.basename(x)) else 0)
+                    time.sleep(0.5) # Pause the execution for half a second
                     subprocess.Popen(["open"] + file_paths) # Open all files in one window (Preview application)
                     break
                 elif ask_to_continue == "n":
@@ -239,6 +247,7 @@ def getcomposer(): # Function to get the family and first name. (Middle name opt
                 anonyme = input("Should 'Anonymous' be taken as lastname? (y(Default)/n) ")
                 if anonyme.strip().lower() == "" or anonyme.strip().lower() == "y":
                     lastname = "Anonymous"
+                    print("Last name has been successfully changed to 'Anonymous'.")
                     break
                 elif anonyme.strip().lower() == "n":
                     lastname = handle_input("Family name of composer: ")
@@ -858,8 +867,10 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 # Preperation
 print("\nTo quit at any time just type '!exit'.")
 print("To get the default value just press ENTER.")
+print("If a composer is unknown write 'none' as first name and the family name will be changed to 'Anonymous'.")
 print("Shortcuts:\n\ttype '¡' (opt + 1) for Allegro\n\ttype '“' (opt + 2) for Andante\n\ttype '¶' (opt + 3) for Adagio\n")
 
+# Directory
 while True:
     # Ask for directory
     mydir = filedialog.askdirectory()
