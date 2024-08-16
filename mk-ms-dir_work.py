@@ -42,6 +42,26 @@ def check_exit(input_string): # Function to check if input is '!exit'
         print("Program exited.")
         sys.exit()  # Exit the program
 
+def check_quotation_balance(user_input):
+    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "”"}
+    stack = []
+
+    for char in user_input:
+        if char in quotes.keys():  # Opening quote
+            stack.append(char)
+        elif char in quotes.values():  # Closing quote
+            if stack and quotes[stack[-1]] == char:
+                stack.pop()
+            else:
+                if stack:
+                    expected = quotes[stack[-1]]
+                    print(f"Error: Found '{char}' but expected '{expected}'. Please fix your input.")
+                else:
+                    print(f"Error: Found an unexpected closing quotation mark '{char}'. Please fix your input.")
+                return False
+    
+    return len(stack) == 0  # If stack is empty, all quotes are balanced
+
 def handle_input(prompt): # Function to check for empty, single character and lower case inputs
     while True:
         user_input = str(input(prompt).strip())
@@ -53,6 +73,10 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         
         if user_input.strip() == "":
             print("Empty input not possible!")
+            continue
+
+        if not check_quotation_balance(user_input):
+            print("Your input has mismatched quotation marks. Please correct your input.")
             continue
         
         if len(user_input.strip()) == 1: # Check for single character inputs and lowercase
@@ -380,15 +404,11 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
     return cdnumber
 
 def getmediatitle(askbox, cdnumber): # Function to get the mediatitle
-    while True:
-        mediatitle = handle_input("\nMediatitle: ")
-        if (askbox == "y" or askbox == ""):
-            mediatitle += f"._CD{str(cdnumber)}"
-            print(f"Box number successfully appended. New mediatitle: {mediatitle}")
-            break
-        else:
-            break
-
+    mediatitle = handle_input("\nMediatitle: ")
+    if (askbox == "y" or askbox == ""):
+        mediatitle += f"._CD{str(cdnumber)}"
+        print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+        
     return mediatitle
 
 def dirname(mydir): # Function to extract the directory name of mydir (last part of the path)
