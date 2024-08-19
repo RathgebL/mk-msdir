@@ -8,6 +8,7 @@
 ## now: Python3
 ## new features:    error handling
 ##                  default values for yes/no-questions
+##                  ebd for previous composer
 ##                  filedialog for user input of working directory
 ##                  append data to excel sheet
 ##                  creat box/find box and move folders to it
@@ -74,6 +75,10 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         if user_input.strip() == "":
             print("Empty input not possible!")
             continue
+
+        if user_input.strip().endswith(","):
+            user_input = user_input[:-1].strip()
+            print("A comma at the end of your input has been removed!")
 
         if not check_quotation_balance(user_input):
             print("Your input has mismatched quotation marks. Please correct your input.")
@@ -166,7 +171,7 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
 
             # Ask the user to continue or delete the folder
             while True:
-                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)): ").strip().lower()
+                ask_to_delete = input("Would you like to delete the booklet folder? (y/n(Default)) ").strip().lower()
                 check_exit(ask_to_delete)
                 if ask_to_delete == "y":
                     try:
@@ -181,7 +186,7 @@ def process_booklet(mydir): # Function to rotate, sharpen, rename and automaticl
                 else:
                     print("Invalid input. Please enter 'y' or 'n'.")
             
-            ask_to_continue = input("Do you want to continue with renaming the audio files (y(Default)/n): ").strip().lower()
+            ask_to_continue = input("Do you want to continue with renaming the audio files? (y(Default)/n) ").strip().lower()
             check_exit(ask_to_continue)
             processed_booklet_files = [file for file in os.listdir(bookletfolder) if file.lower().startswith("processed_booklet") and file.lower().endswith((".jpeg", ".jpg"))]
             while True:
@@ -370,7 +375,7 @@ def boxcheck(mydir): # Function to check for box set
     cdnumber = ""
 
     while True:
-        askbox = input("\nIs this media part of a box set? (y(Default)/n): ").strip().lower()
+        askbox = input("\nIs this media part of a box set? (y(Default)/n) ").strip().lower()
         check_exit(askbox)
         if askbox not in ("y", "n", ""):
             print("Invalid input. Please enter 'y' or 'n'.")
@@ -494,7 +499,7 @@ def getwork(allfiles, numberofcomposers, composer):
             if len(composers) > 1 and composers[-1][1] == "ebd":
                 composer = composers[-2]
                 composers[-1] = composers [-2]
-                print(f"\tFirst name: {composers[1][1]}\n\tLast name: {composers[1][0]}")
+                print(f"\tFirst name: {composers[-1][1]}\n\tLast name: {composers[-1][0]}")
             
             allcomposers.append(composer) # List of composers. No doubles
             allcomposers = list(set(tuple(comp) for comp in allcomposers))
@@ -536,7 +541,10 @@ def getwork(allfiles, numberofcomposers, composer):
 def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): # Function to get media directory
     mediadir = os.path.join(mydir, "")
     if numberofcomposers == 1:
-        mediadir += composer[0] + "," + composer[1]
+        if composer[0] == "Anonymous" or composer[1] == "":
+            mediadir += composer[0]
+        else:
+            mediadir += composer[0] + "," + composer[1]
     elif numberofcomposers > 4:
         mediadir += "Verschiedene"
     else:
@@ -557,10 +565,12 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
     
 
     for work in works:
-        if not work[0] == "Anonymous":
-            workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
-        else:
+        if work[0] == "Anonymous" or work[1] == "":
             workdir = os.path.join(mediadir, escape(work[0]) + "-" + escape(work[2])) # leaves out the "," and first name if the composer is not known
+            print("T1")        
+        else:
+            workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
+            print("T2")
 
         try:
             os.makedirs(workdir, exist_ok=True) # Create folder (Familyname,Firstname-Workname)
@@ -899,6 +909,9 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 print("\nTo quit at any time just type '!exit'.")
 print("To get the default value just press ENTER.")
 print("If a composer is unknown write 'none' as first name and the family name will be changed to 'Anonymous'.")
+print("To type in just one name for the composer (i.e. a band name) write 'none' as first name and 'n' to enter as family name.")
+print("Write 'ebd' as first name and the name of the previous composer will automaticlly be filled in.")
+print("Commas (,) and colons (:) will automatically be removed at end of an input.")
 print("Shortcuts:\n\ttype '¡' (opt + 1) for Allegro\n\ttype '“' (opt + 2) for Andante\n\ttype '¶' (opt + 3) for Adagio\n")
 
 # Directory
