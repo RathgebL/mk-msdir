@@ -61,6 +61,8 @@ def check_quotation_balance(user_input):
                     print(f"Error: Found an unexpected closing quotation mark '{char}'. Please fix your input.")
                 return False
     
+    print(stack) # DEBUG
+
     return len(stack) == 0  # If stack is empty, all quotes are balanced
 
 def handle_input(prompt): # Function to check for empty, single character and lower case inputs
@@ -81,8 +83,14 @@ def handle_input(prompt): # Function to check for empty, single character and lo
             print("A comma at the end of your input has been removed!")
 
         if not check_quotation_balance(user_input):
-            print("Your input has mismatched quotation marks. Please correct your input.")
-            continue
+            confirm = input("Your input has mismatched quotation marks. Would you like to change your input? (y(Default)/n) ")
+            if confirm == "y" or confirm == "":
+                check_exit(confirm)
+                continue
+            elif confirm not in ("n", "y", ""):
+                check_exit(confirm)
+                print("Invalid input. Please enter 'y' or 'n'.")
+                continue
         
         if len(user_input.strip()) == 1: # Check for single character inputs and lowercase
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
@@ -566,11 +574,9 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
 
     for work in works:
         if work[0] == "Anonymous" or work[1] == "":
-            workdir = os.path.join(mediadir, escape(work[0]) + "-" + escape(work[2])) # leaves out the "," and first name if the composer is not known
-            print("T1")        
+            workdir = os.path.join(mediadir, escape(work[0]) + "-" + escape(work[2])) # leaves out the "," and first name if the composer is not known        
         else:
             workdir = os.path.join(mediadir, escape(work[0]) + "," + escape(work[1]) + "-" + escape(work[2]))
-            print("T2")
 
         try:
             os.makedirs(workdir, exist_ok=True) # Create folder (Familyname,Firstname-Workname)
@@ -750,7 +756,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     # 1. Confirm input
     while True:
         # review
-        print("\n----------------------------------\nReview your inputs:")
+        print("\n--------------------------------------------\nReview your inputs:")
         print(f"1. Mediatitle: {mediatitle}")
         i = 0
         if numberofcomposers == 1:
@@ -770,8 +776,8 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
                     print(f"{i}. Name of interpreter: {interpreter}")
                 print(f"{i+1}. Number of media (four digits): {medianumber}")
                 highesti = i + 1
-
-        confirm1 = input("\nTo change an input, type its number or press ENTER to confirm: ").strip()
+        print("--------------------------------------------\n")
+        confirm1 = input("To change an input, type its number or press ENTER to confirm: ").strip()
         check_exit(confirm1)
 
         if confirm1 == "":
@@ -789,8 +795,30 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
         elif confirm1 == "1":
             mediatitle = handle_input("Edit mediatitle: ")
             if (askbox == "y" or askbox == ""):
-                mediatitle += f"._CD{str(cdnumber)}"
-                print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+                ask_cdnumber = input(f"Do you want to change the CD number? (currently at: {cdnumber}) (y/n(Default)) ")
+                check_exit(ask_cdnumber)
+                while True:
+                    if ask_cdnumber.strip().lower() not in ("y", "n", ""):
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        continue
+                    elif ask_cdnumber.strip().lower() == "n" or ask_cdnumber.strip().lower() == "":
+                        mediatitle += f"._CD{str(cdnumber)}"
+                        print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+                        break
+                    else:
+                        try:
+                            newcdnumber = int(input("Number of current CD: "))
+                            if cdnumber < 0:
+                                print("Invalid input. Please provide a natural number.")
+                            elif cdnumber == "":
+                                print("Empty input. Please provide a natural number.")
+                            else:
+                                mediatitle += f"._CD{str(newcdnumber)}"
+                                print(f"Box number successfully appended. New mediatitle: {mediatitle}")
+                                break
+                        except ValueError:
+                            print("Invalid input. Please enter a numeric value.")
+                        
         elif confirm1 == '2' and numberofcomposers == 1:
             composer[0] = handle_input("Edit family name of composer: ")
             composerlist = [composer[0], composer[1]]
