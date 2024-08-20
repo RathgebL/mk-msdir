@@ -46,20 +46,37 @@ def check_exit(input_string): # Function to check if input is '!exit'
 def check_quotation_balance(user_input):
     quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "”"}
     stack = []
+    previous_char = None
 
-    for char in user_input:
-        if char in quotes.keys():  # Opening quote
-            stack.append(char)
-        elif char in quotes.values():  # Closing quote
-            if stack and quotes[stack[-1]] == char:
-                stack.pop()
-            else:
-                if stack:
-                    expected = quotes[stack[-1]]
-                    print(f"Error: Found '{char}' but expected '{expected}'. Please fix your input.")
+    for i, char in enumerate(user_input):
+        if char in quotes.keys() or char in quotes.values(): # Check if the character is a quotation mark
+            if previous_char is None or previous_char.isspace():  # Opening quote
+                if char in quotes.keys():
+                    stack.append(char)  # Add opening quote to stack
+                elif char in quotes.values():
+                    # Error: found closing quote but expected an opening
+                    print(f"Error: unexpected location for closing quotation mark '{char}'.")
+                    return False
+            else:  # Closing quote
+                if stack and char == quotes.get(stack[-1], None):  # Matches last opening
+                    stack.pop()  # Correctly matched, remove from stack
                 else:
-                    print(f"Error: Found an unexpected closing quotation mark '{char}'. Please fix your input.")
-                return False
+                    # Error: mismatched or unexpected closing quote
+                    if stack:
+                        expected = quotes[stack[-1]]
+                        print(f"Error: Found '{char}' but expected '{expected}'.")
+                    else:
+                        print(f"Error: unexpected closing quotation mark '{char}'.")
+                    return False
+        # Track the previous character
+        previous_char = char
+
+    # Check if there are unmatched quotes left in the stack
+    if stack:
+        unmatched_quote = stack[-1]
+        expected = quotes[unmatched_quote]
+        print(f"Error: Found '{unmatched_quote}' but expected '{expected}'.")
+        return False
     
     print(stack) # DEBUG
 
