@@ -44,41 +44,44 @@ def check_exit(input_string): # Function to check if input is '!exit'
         sys.exit()  # Exit the program
 
 def check_quotation_balance(user_input):
-    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "”"}
+    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "“"}
     stack = []
     previous_char = None
+    reverse_quotes = {v: k for k, v in quotes.items()}
 
     for i, char in enumerate(user_input):
+        if char == '(': # skip parentheses
+            continue
+
         if char in quotes.keys() or char in quotes.values(): # Check if the character is a quotation mark
             if previous_char is None or previous_char.isspace():  # Opening quote
                 if char in quotes.keys():
                     stack.append(char)  # Add opening quote to stack
                 elif char in quotes.values():
-                    # Error: found closing quote but expected an opening
-                    print(f"Error: unexpected location for closing quotation mark '{char}'.")
+                    expected_opening = reverse_quotes[char]  # Find the matching opening quote
+                    print(f"Error: unexpected location for closing quotation mark '{char}'. Expected quotation mark: '{expected_opening}'") # Error: found closing quote but expected an opening
                     return False
             else:  # Closing quote
                 if stack and char == quotes.get(stack[-1], None):  # Matches last opening
                     stack.pop()  # Correctly matched, remove from stack
                 else:
-                    # Error: mismatched or unexpected closing quote
                     if stack:
                         expected = quotes[stack[-1]]
                         print(f"Error: Found '{char}' but expected '{expected}'.")
                     else:
-                        print(f"Error: unexpected closing quotation mark '{char}'.")
+                        if char in reverse_quotes:
+                            expected_opening = reverse_quotes[char]
+                            print(f"Error: Missing opening quotation mark. Expected '{expected_opening}' for '{char}'.")
+                        else:
+                            print(f"Error: Unexpected closing quotation mark '{char}'.")
                     return False
         # Track the previous character
         previous_char = char
 
-    # Check if there are unmatched quotes left in the stack
     if stack:
         unmatched_quote = stack[-1]
         expected = quotes[unmatched_quote]
-        print(f"Error: Found '{unmatched_quote}' but expected '{expected}'.")
-        return False
-    
-    print(stack) # DEBUG
+        print(f"Error: Missing closing quotation mark. Expected '{expected}' for '{unmatched_quote}'.")
 
     return len(stack) == 0  # If stack is empty, all quotes are balanced
 
@@ -132,28 +135,69 @@ def handle_input(prompt): # Function to check for empty, single character and lo
 
         while True: # Check for uppercase characters in the moddle of words
             words = user_input.split()
-            char_exceptions = { "„","\"", "\'", "‚", "\‘" "-", "(", "/"}
-            for i, word in enumerate(words):
-                if not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
-                    confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
-                    check_exit(confirm)
-                    if word[0] not in char_exceptions and (confirm == "y" or confirm == ""):
-                        updated_word = word[0] + word[1:].lower()
-                        words[i] = updated_word
-                        print(f"The word '{word}' has been changed to: '{updated_word}'")
-                    elif not confirm == "n":
-                        print("Invalid input. Please enter 'y' or 'n'.")
-                        continue
-                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
-                    confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
-                    check_exit(confirm)
-                    if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
-                        updated_word = word[0] + word[1] + word[2:].lower()
-                        words[i] = updated_word
-                        print(f"The word '{word}' has been changed to: '{updated_word}'")
-                    elif not confirm == "n":
-                        print("Invalid input. Please enter 'y' or 'n'.")
-                        continue
+            char_exceptions = { "„","\"", "\'", "‚", "‘" "-", "(", "/", "‘", "«", "»", "‹", "›"}
+            for i, word in enumerate(words):             
+                if "-" in word and not word.isupper():
+                    if word[0] not in char_exceptions:
+                        parts = word.split('-')  # Split the word by hyphen
+                        updated_parts = []
+                        for part in parts:
+                            if part and part[1:].isupper():  # Check if part has uppercase after the first character
+                                confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                                check_exit(confirm)
+                                if (confirm == "y" or confirm == ""):
+                                    updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
+                                    updated_parts.append(updated_part)
+                                elif not confirm == "n":
+                                    print("Invalid input. Please enter 'y' or 'n'.")
+                                    continue
+                            else:
+                                updated_parts.append(part)  # No issue, keep it as is                                
+                        
+                        updated_word = '-'.join(updated_parts)
+                        if updated_word != word:  # If any part was changed, notify the user
+                            words[i] = updated_word
+                            print(f"The word '{word}' has been changed to: '{updated_word}'")
+                    elif word[0] in char_exceptions:
+                        parts = re.split(r'(?<=\w)(?=-)', word)  # Split the word infront of the hyphen and include it in the second part via lookahead and re.split
+                        updated_parts = []
+                        for part in parts:
+                            if part and part[2:].isupper():  # Check if part has uppercase after the first character
+                                confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                                check_exit(confirm)
+                                if (confirm == "y" or confirm == ""):
+                                    updated_part = part[0] + part[1] + part[2:].lower()  # Change everything after the first character to lowercase
+                                    updated_parts.append(updated_part)
+                                elif not confirm == "n":
+                                    print("Invalid input. Please enter 'y' or 'n'.")
+                                    continue
+                            else:
+                                updated_parts.append(part)  # No issue, keep it as is                                
+                        
+                        updated_word = '-'.join(updated_parts)
+                        if updated_word != word:  # If any part was changed, notify the user
+                            words[i] = updated_word
+                            print(f"The word '{word}' has been changed to: '{updated_word}'")
+                    elif not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
+                        confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                        check_exit(confirm)
+                        if (confirm == "y" or confirm == ""):
+                            updated_word = word[0] + word[1:].lower()
+                            words[i] = updated_word
+                            print(f"The word '{word}' has been changed to: '{updated_word}'")
+                        elif not confirm == "n":
+                            print("Invalid input. Please enter 'y' or 'n'.")
+                            continue
+                    elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
+                        confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                        check_exit(confirm)
+                        if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
+                            updated_word = word[0] + word[1] + word[2:].lower()
+                            words[i] = updated_word
+                            print(f"The word '{word}' has been changed to: '{updated_word}'")
+                        elif not confirm == "n":
+                            print("Invalid input. Please enter 'y' or 'n'.")
+                            continue
 
             user_input = ' '.join(words)  # Reconstruct the user input from the modified words list
             break
@@ -513,8 +557,8 @@ def getwork(allfiles, numberofcomposers, composer):
         print(str(len(works) + 1) + ". Work of media")
         while True:
             workname = handle_input("Name of work: ")
-            if any(work[2] == workname for work in works):    #check if input is unique
-                print("Work with the same name already exists. Please provide a unique name.")                      
+            if any(work[2] == workname for work in works) and numberofcomposers == 1: # Check if the workname already exist in the works list for CDs with just one composer
+                print("Work with the same name and composer already exists. Please provide a unique name.")                      
             else:
                 break
 
@@ -526,6 +570,10 @@ def getwork(allfiles, numberofcomposers, composer):
                 composers[-1] = composers [-2]
                 print(f"\tFirst name: {composers[-1][1]}\n\tLast name: {composers[-1][0]}")
             
+            if any(work[2] == workname and [work[0], work[1]] == composer for work in works): # Check if both the workname and the composer already exist in the works list for CDs with multiple composers
+                print("Work with the same name and composer already exists. Please provide a unique pair of work name and composer.")
+                continue                      
+
             allcomposers.append(composer) # List of composers. No doubles
             allcomposers = list(set(tuple(comp) for comp in allcomposers))
 
