@@ -544,6 +544,7 @@ def writeexcel(combined_df, excelpath): # Function to write to the combined Data
 def getwork(allfiles, numberofcomposers, composer):
     # work stuff
     track = 0
+    tracknumber = 0
     endtrack = 0
     works = []  # List to store information about works
     composers = [] # List to store composer names
@@ -554,7 +555,8 @@ def getwork(allfiles, numberofcomposers, composer):
     while endtrack < len(allfiles):
         
         # workname + composer
-        print(str(len(works) + 1) + ". Work of media")
+        tracknumber = track + 1
+        print(str(len(works) + 1) + ". Work of media (Track: " + str(tracknumber) + ")")
         while True:
             workname = handle_input("Name of work: ")
             if any(work[2] == workname for work in works) and numberofcomposers == 1: # Check if the workname already exist in the works list for CDs with just one composer
@@ -659,10 +661,12 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                 print(f"Source file '{file_path}' not found. Skipping.")
             filenr += 1
         else:
+            tracknumber = work[3]
             for multimovnr in range(1, (int(work[4]) - int(work[3]) + 2)):
-                file = allfiles[filenr]
+                file = allfiles[filenr]             
                 while True:
-                    movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + ": ")
+                    movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + " (Track: " + str(tracknumber) + "): ")
+                    tracknumber += 1
                     if movtitle == prev_movtitle:  # Check if input is the same as previous one
                         confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
                         check_exit(confirm)
@@ -711,7 +715,7 @@ def booklet(mydir, mediadir, askbox, cdnumber): # Function that handles the book
         print("\nBooklet renaming:")
         for bookfile in bookfiles:
             if bookfile in special_files:
-                newbookfile = bookfile.replace("processed_", "").replace(".jpg", ".jpeg") # Remove "processed_" from the filename and replace "jpg" with "jpeg"
+                newbookfile = bookfile.replace("processed_", "").replace(".jpeg", ".jpg") # Remove "processed_" from the filename and replace "jpg" with "jpeg"
                 print(f"Renaming: {bookfile} -> {newbookfile}")
                 os.rename(os.path.join(bookletdir, bookfile), os.path.join(bookletdir, newbookfile))
             elif bookfile not in special_files and bookfile.lower().endswith(".jpeg" or ".jpg"):
@@ -837,7 +841,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
             highesti = 2
             print(f"2. Number of composer: {numberofcomposers}")
             if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
-                for i, interpreter in enumerate(interpreterlist, start=4):
+                for i, interpreter in enumerate(interpreterlist, start=3):
                     print(f"{i}. Name of interpreter: {interpreter}")
                 print(f"{i+1}. Number of media (four digits): {medianumber}")
                 highesti = i + 1
