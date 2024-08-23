@@ -558,7 +558,7 @@ def getwork(allfiles, numberofcomposers, composer):
         while True:
             workname = handle_input("Name of work: ")
             if any(work[2] == workname for work in works) and numberofcomposers == 1: # Check if the workname already exist in the works list for CDs with just one composer
-                print("Work with the same name and composer already exists. Please provide a unique name.")                      
+                print("Work with the same name already exists. Please provide a unique name.")                      
             else:
                 break
 
