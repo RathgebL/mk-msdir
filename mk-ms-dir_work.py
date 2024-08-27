@@ -44,46 +44,80 @@ def check_exit(input_string): # Function to check if input is '!exit'
         sys.exit()  # Exit the program
 
 def check_quotation_balance(user_input):
-    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "“"}
-    stack = []
-    previous_char = None
+    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "”"}
     reverse_quotes = {v: k for k, v in quotes.items()}
-
-    for i, char in enumerate(user_input):
-        if char == '(': # skip parentheses
-            continue
-
-        if char in quotes.keys() or char in quotes.values(): # Check if the character is a quotation mark
-            if previous_char is None or previous_char.isspace():  # Opening quote
-                if char in quotes.keys():
-                    stack.append(char)  # Add opening quote to stack
-                elif char in quotes.values():
-                    expected_opening = reverse_quotes[char]  # Find the matching opening quote
-                    print(f"Error: unexpected location for closing quotation mark '{char}'. Expected quotation mark: '{expected_opening}'") # Error: found closing quote but expected an opening
-                    return False
-            else:  # Closing quote
-                if stack and char == quotes.get(stack[-1], None):  # Matches last opening
-                    stack.pop()  # Correctly matched, remove from stack
-                else:
+    
+    def validate_quotes(string):
+        stack = []
+        previous_char = None
+        
+        for i, char in enumerate(string):
+            if char == '(':  # Skip parentheses
+                continue
+            
+            # Check for opening or closing quotation marks
+            if char in quotes.keys() or char in quotes.values():
+                if previous_char is None or previous_char.isspace():  # If space before, it's an opening quote
+                    if char in quotes.keys():  # Opening quote
+                        stack.append(char)  # Add opening quote to stack
+                    elif char in quotes.values():  # Found a closing quote, but expected an opening
+                        expected_opening = reverse_quotes[char]
+                        print(f"Error: unexpected location for closing quotation mark '{char}'. Expected quotation mark: '{expected_opening}'") # Error: found closing quote but expected an opening
+                        return False, string, stack
+                else:  # It's a closing quote
                     if stack:
-                        expected = quotes[stack[-1]]
-                        print(f"Error: Found '{char}' but expected '{expected}'.")
-                    else:
-                        if char in reverse_quotes:
-                            expected_opening = reverse_quotes[char]
-                            print(f"Error: Missing opening quotation mark. Expected '{expected_opening}' for '{char}'.")
+                        expected = quotes[stack[-1]]  # Get the matching closing quote for the last opening
+                        if char == expected:
+                            stack.pop()  # Correct match, remove opening from stack
+                        else:  # Mismatch between opening and closing quotes
+                            return False, string, stack
+                    else:  # No opening for the closing quote
+                        expected_opening = reverse_quotes[char]
+                        print(f"Error: Missing opening quotation mark. Expected '{expected_opening}' for '{char}'.")
+                        return False, string, stack
+            
+            previous_char = char
+        
+        # If there's something left in the stack, it means an opening quote was not closed
+        if stack:
+            expected_closing = quotes[stack[-1]]
+            print(f"Error: Missing closing quotation mark. Expected '{expected_closing}'.")
+            return False, "!stop", stack
+        
+        return True, string, stack
+
+    is_balanced, corrected_input, stack = validate_quotes(user_input)
+
+    # Handle mismatch and give user a chance to fix
+    while not is_balanced:
+        # If the mismatch occurs because of an incorrect closing quote, handle it here
+        if stack:  # For opening quote without a match
+            expected = quotes[stack[-1]]
+            for i, char in enumerate(corrected_input):
+                if char in quotes.values() and (not stack or quotes[stack[-1]] != char):
+                    while True:
+                        confirm = input(f"Error: Found '{char}' but expected '{expected}'. Would you like to change it? (y(Default)/n) ")
+                        check_exit(confirm)
+                        if confirm == "y" or confirm == "":
+                            # Replace the wrong quote with the expected one
+                            corrected_input = corrected_input[:i] + expected + corrected_input[i+1:]
+                            print(f"The input has been corrected to: {corrected_input}")
+                            if stack:
+                                stack.pop()  # Remove the matched opening quote from stack
+                            break
+                        elif confirm == "n":
+                            break
                         else:
-                            print(f"Error: Unexpected closing quotation mark '{char}'.")
-                    return False
-        # Track the previous character
-        previous_char = char
+                            print("Invalid input. Please enter 'y' or 'n'.")
+            
+            if not corrected_input == "!stop":
+                is_balanced, corrected_input, stack = validate_quotes(corrected_input) # After correction, revalidate the whole string from the beginning
+            else:
+                break
+        else:
+            break
 
-    if stack:
-        unmatched_quote = stack[-1]
-        expected = quotes[unmatched_quote]
-        print(f"Error: Missing closing quotation mark. Expected '{expected}' for '{unmatched_quote}'.")
-
-    return len(stack) == 0  # If stack is empty, all quotes are balanced
+    return is_balanced, corrected_input
 
 def handle_input(prompt): # Function to check for empty, single character and lower case inputs
     while True:
@@ -102,15 +136,19 @@ def handle_input(prompt): # Function to check for empty, single character and lo
             user_input = user_input[:-1].strip()
             print("A comma at the end of your input has been removed!")
 
-        if not check_quotation_balance(user_input):
+        is_balanced, corrected_input = check_quotation_balance(user_input) # Check for quotation mark balance and get corrected input
+
+        if not is_balanced:  # If the quotation marks are unbalanced
             confirm = input("Your input has mismatched quotation marks. Would you like to change your input? (y(Default)/n) ")
-            if confirm == "y" or confirm == "":
-                check_exit(confirm)
-                continue
-            elif confirm not in ("n", "y", ""):
-                check_exit(confirm)
+            check_exit(confirm)
+            if confirm == "y" or confirm == "":  # If user confirms, use the corrected input
+                user_input = corrected_input
+                continue  # Re-check the input
+            elif confirm not in ("n", "y", ""):  # Handle invalid input
                 print("Invalid input. Please enter 'y' or 'n'.")
                 continue
+        else:
+            user_input = corrected_input  # If the input was already balanced, use the corrected version
         
         if len(user_input.strip()) == 1: # Check for single character inputs and lowercase
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
@@ -617,9 +655,9 @@ def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): #
     mediadir = os.path.join(mydir, "")
     if numberofcomposers == 1:
         if composer[0] == "Anonymous" or composer[1] == "":
-            mediadir += composer[0]
+            mediadir += escape(composer[0])
         else:
-            mediadir += composer[0] + "," + composer[1]
+            mediadir += escape(composer[0]) + "," + escape(composer[1])
     elif numberofcomposers > 4:
         mediadir += "Verschiedene"
     else:
