@@ -44,7 +44,7 @@ def check_exit(input_string): # Function to check if input is '!exit'
         sys.exit()  # Exit the program
 
 def check_quotation_balance(user_input):
-    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "”"}
+    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "»": "«", "‹": "›", "„": "”"}
     reverse_quotes = {v: k for k, v in quotes.items()}
     
     def validate_quotes(string):
@@ -135,6 +135,18 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         if user_input.strip().endswith(","):
             user_input = user_input[:-1].strip()
             print("A comma at the end of your input has been removed!")
+
+        if user_input.strip().endswith("."):
+            user_input = user_input[:-1].strip()
+            print("A point at the end of your input has been removed!")
+            
+        if user_input.strip().endswith(":"):
+            user_input = user_input[:-1].strip()
+            print("A colon at the end of your input has been removed!")
+
+        if user_input.strip().endswith(";"):
+            user_input = user_input[:-1].strip()
+            print("A semicolon at the end of your input has been removed!")
 
         is_balanced, corrected_input = check_quotation_balance(user_input) # Check for quotation mark balance and get corrected input
 
@@ -815,7 +827,7 @@ def movebox(mediadir, boxname): # Funtion to move folder to box
                     if subfolder == boxname and os.path.isdir(os.path.join(potential_folder, subfolder)):
                         box = os.path.join(potential_folder, subfolder)
                         while True:
-                            ask_to_move = input(f"Box found at: {box}\nDo you want to move the folder? (y(Default)/n) ")
+                            ask_to_move = input(f"\nBox found at: {box}\nDo you want to move the folder? (y(Default)/n) ")
                             check_exit(ask_to_move)
                             if ask_to_move == "y" or ask_to_move == "":
                                 try:
