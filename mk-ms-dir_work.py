@@ -44,7 +44,7 @@ def check_exit(input_string): # Function to check if input is '!exit'
         sys.exit()  # Exit the program
 
 def check_quotation_balance(user_input):
-    quotes = {"'": "'", "\"": "\"", "“": "”", "‘": "’", "»": "«", "‹": "›", "„": "”"}
+    quotes = {"\"": "\"", "“": "”", "‘": "’", "»": "«", "‹": "›", "„": "”"} # "'": "'"
     reverse_quotes = {v: k for k, v in quotes.items()}
     
     def validate_quotes(string):
@@ -721,6 +721,7 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                         confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
                         check_exit(confirm)
                         if confirm == "y" or confirm == "":
+                            tracknumber -= 1
                             continue
                         elif confirm == "n":
                             break
@@ -833,12 +834,12 @@ def movebox(mediadir, boxname): # Funtion to move folder to box
                                 try:
                                     shutil.move(mediadir, box)
                                     print("Folder successfully moved.")
-                                    break
+                                    return
                                 except Exception as e:
                                     print(f"Error moving media directory: {e}")
                             elif ask_to_move == "n":
                                 print("Folder not moved.")
-                                break
+                                return
                             else:
                                 print("Invalid input. Please enter 'y' or 'n'.")
     
