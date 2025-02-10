@@ -4,7 +4,7 @@
 ############## MEDIASERVER FILENAMER ##############
 ## Frank Zalkow, 2011-12
 ## not possible: Collections
-## Updated by Lennat Rathgeb, 2022-23
+## Updated by Lennat Rathgeb, 2022-25
 ## now: Python3
 ## new features:    error handling
 ##                  default values for yes/no-questions
@@ -43,11 +43,52 @@ def check_exit(input_string): # Function to check if input is '!exit'
         print("Program exited.")
         sys.exit()  # Exit the program
 
-def check_quotation_balance(user_input):
-    quotes = {"\"": "\"", "“": "”", "‘": "’", "«": "»", "‹": "›", "„": "“"} # "'": "'"
-    reverse_quotes = {v: k for k, v in quotes.items()}
-    
-    def validate_quotes(string):
+def convert_to_german_quotes(user_input):
+        # German quotation marks: „ for opening, “ for closing
+        german_open_quote = "„"
+        german_close_quote = "“"
+        
+        # These are common opening and closing quotation marks
+        opening_quotes = {'"', '‘', '«', '‹'} # '“'
+        closing_quotes = {'"', '’', '»', '›'} # '”'
+        
+        result = []
+        is_open = True  # Track if the next quote should be an opening quote
+        converted = False  # Flag to check if any conversion happens
+        previous_char = None
+        
+        for char in user_input:
+            if char in opening_quotes or char in closing_quotes:
+                # Determine if it's an opening or closing quote
+                if is_open:
+                    # Check if it should be an opening quote (no previous char or previous char is a space or parenthesis)
+                    if previous_char is None or previous_char.isspace() or previous_char == '(':
+                        result.append(german_open_quote)
+                        converted = True
+                    else:
+                        result.append(german_close_quote)
+                        converted = True
+                    is_open = False  # After an opening quote, expect a closing one next
+                else:
+                    result.append(german_close_quote)
+                    converted = True
+                    is_open = True  # After a closing quote, expect an opening one next
+            else:
+                result.append(char)
+            
+            # Update the previous character, skip over parenthesis
+            if char != '(':
+                previous_char = char
+        
+        converted_input = ''.join(result)
+        
+        if converted: # Print only if conversion occurred
+            print(f"{user_input} has been converted to: {converted_input}")
+
+        return converted_input
+
+def validate_quotes(string):
+        quotes = {"\"": "\"", "“": "”", "‘": "’", "»": "«", "‹": "›", "„": "“"} # "'": "'"
         stack = []
         previous_char = None
         
@@ -61,20 +102,18 @@ def check_quotation_balance(user_input):
                     if char in quotes.keys():  # Opening quote
                         stack.append(char)  # Add opening quote to stack
                     elif char in quotes.values():  # Found a closing quote, but expected an opening
-                        expected_opening = reverse_quotes[char]
-                        print(f"Error: unexpected location for closing quotation mark '{char}'. Expected quotation mark: '{expected_opening}'") # Error: found closing quote but expected an opening
-                        return False, string, stack
+                        print(f"Error: unexpected location for closing quotation mark '{char}'.") # Error: found closing quote but expected an opening
+                        return False, string
                 else:  # It's a closing quote
                     if stack:
                         expected = quotes[stack[-1]]  # Get the matching closing quote for the last opening
                         if char == expected:
                             stack.pop()  # Correct match, remove opening from stack
                         else:  # Mismatch between opening and closing quotes
-                            return False, string, stack
+                            return False, string
                     else:  # No opening for the closing quote
-                        expected_opening = reverse_quotes[char]
-                        print(f"Error: Missing opening quotation mark. Expected '{expected_opening}' for '{char}'.")
-                        return False, string, stack
+                        print(f"Error: Missing opening quotation mark.")
+                        return False, string
             
             previous_char = char
         
@@ -82,42 +121,9 @@ def check_quotation_balance(user_input):
         if stack:
             expected_closing = quotes[stack[-1]]
             print(f"Error: Missing closing quotation mark. Expected '{expected_closing}'.")
-            return False, "!stop", stack
+            return False, "!stop"
         
-        return True, string, stack
-
-    is_balanced, corrected_input, stack = validate_quotes(user_input)
-
-    # Handle mismatch and give user a chance to fix
-    while not is_balanced:
-        # If the mismatch occurs because of an incorrect closing quote, handle it here
-        if stack:  # For opening quote without a match
-            expected = quotes[stack[-1]]
-            for i, char in enumerate(corrected_input):
-                if char in quotes.values() and (not stack or quotes[stack[-1]] != char):
-                    while True:
-                        confirm = input(f"Error: Found '{char}' but expected '{expected}'. Would you like to change it? (y(Default)/n) ")
-                        check_exit(confirm)
-                        if confirm == "y" or confirm == "":
-                            # Replace the wrong quote with the expected one
-                            corrected_input = corrected_input[:i] + expected + corrected_input[i+1:]
-                            print(f"The input has been corrected to: {corrected_input}")
-                            if stack:
-                                stack.pop()  # Remove the matched opening quote from stack
-                            break
-                        elif confirm == "n":
-                            break
-                        else:
-                            print("Invalid input. Please enter 'y' or 'n'.")
-            
-            if not corrected_input == "!stop":
-                is_balanced, corrected_input, stack = validate_quotes(corrected_input) # After correction, revalidate the whole string from the beginning
-            else:
-                break
-        else:
-            break
-
-    return is_balanced, corrected_input
+        return True, string
 
 def handle_input(prompt): # Function to check for empty, single character and lower case inputs
     while True:
@@ -148,19 +154,13 @@ def handle_input(prompt): # Function to check for empty, single character and lo
             user_input = user_input[:-1].strip()
             print("A semicolon at the end of your input has been removed!")
 
-        is_balanced, corrected_input = check_quotation_balance(user_input) # Check for quotation mark balance and get corrected input
+        converted_input = convert_to_german_quotes(user_input)
+        is_balanced, corrected_input = validate_quotes(converted_input)
 
-        if not is_balanced:  # If the quotation marks are unbalanced
-            confirm = input("Your input has mismatched quotation marks. Would you like to change your input? (y(Default)/n) ")
-            check_exit(confirm)
-            if confirm == "y" or confirm == "":  # If user confirms, use the corrected input
-                user_input = corrected_input
-                continue  # Re-check the input
-            elif confirm not in ("n", "y", ""):  # Handle invalid input
-                print("Invalid input. Please enter 'y' or 'n'.")
-                continue
+        if not is_balanced:
+            continue
         else:
-            user_input = corrected_input  # If the input was already balanced, use the corrected version
+            user_input = corrected_input  # Use the corrected version when balanced
         
         if len(user_input.strip()) == 1: # Check for single character inputs and lowercase
             confirm = input("You entered a single character. Would you like to change your input? (y(Default)/n) ").strip().lower()
@@ -491,7 +491,7 @@ def boxcheck(mydir): # Function to check for box set
     bookletstatus = 0
     if os.path.exists(bookletpath):
         bookletstatus = 1
-    cdnumber = ""
+    cdnumber = 1
 
     while True:
         askbox = input("\nIs this media part of a box set? (y(Default)/n) ").strip().lower()
@@ -508,7 +508,9 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
         while True:
             if askbox == "y" or askbox == "":
                 try:
+                    print(f"Debug: CD pre {cdnumber}")
                     cdnumber = int(input("Number of current CD: "))
+                    print(f"Debug: CD post {cdnumber}")
                     if cdnumber < 0:
                         print("Invalid input. Please provide a natural number.")
                     elif cdnumber == "":
@@ -518,6 +520,7 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
                 except ValueError:
                     print("Invalid input. Please enter a numeric value.")
             elif askbox == "n":
+                cdnumber = 1
                 break
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
@@ -537,8 +540,9 @@ def boxinfo(mydir, askbox, cdnumber):
         boxmediatitle = ""
         try: 
             box = os.listdir(boxdir)
-            #print(f"Debug: boxdir: {boxdir}")
-            #print(f"Debug: box: {box}")
+            print(f"Debug: currentaudiodirnumber: {currentaudiodirnumber}")
+            print(f"Debug: boxdir: {boxdir}")
+            print(f"Debug: box: {box}")
             if len(box) == 2: # Boxfolder and .DS_Store
                 for folder in box:
                     if os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and not "+" in folder and "," in folder and "-" in folder and not folder.startswith("Verschiedene"):
@@ -550,6 +554,8 @@ def boxinfo(mydir, askbox, cdnumber):
                         boxnumberofcomposers = 5
                         boxmediatitle = folder.split("-", 1)[1]
                         print("Debug: CASE2")
+                    elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Anonymous") and "-" in folder:
+                        print("Debug: CASE3")
             else:
                 print("Multiple folders found in box. Please check and try again. ")
             
@@ -559,7 +565,6 @@ def boxinfo(mydir, askbox, cdnumber):
         except FileNotFoundError:
             print("No box folder found.")
         
-
 def getmediatitle(askbox, cdnumber): # Function to get the mediatitle
     mediatitle = handle_input("\nMediatitle: ")
     if (askbox == "y" or askbox == ""):
@@ -634,8 +639,8 @@ def getwork(allfiles, numberofcomposers, composer):
     allcomposers = []   # only needed when composers between 2 and 4
     total_tracks = len(allfiles) # Get the number of available tracks
 
-    print(f"Debug: composer in getwork: {composer}")
-    print(f"Debug: number of composers in getwork: {numberofcomposers}")
+    #print(f"Debug: composer in getwork: {composer}")
+    #print(f"Debug: number of composers in getwork: {numberofcomposers}")
     
     while endtrack < len(allfiles):
         
@@ -700,12 +705,12 @@ def getwork(allfiles, numberofcomposers, composer):
 
 def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): # Function to get media directory
     mediadir = os.path.join(mydir, "")
-    print(f"Debug: Number of Composers before len(allcomposers()): {numberofcomposers}")
+    #print(f"Debug: Number of Composers before len(allcomposers()): {numberofcomposers}")
     if allcomposers:
         numberofcomposers = len(allcomposers)
-    print(f"Debug: allcomposers: {allcomposers}")
-    print(f"Debug: Number of Composers: {numberofcomposers}")
-    print(f"Debug: Composer: {composer}")
+    #print(f"Debug: allcomposers: {allcomposers}")
+    #print(f"Debug: Number of Composers: {numberofcomposers}")
+    #print(f"Debug: Composer: {composer}")
     if numberofcomposers == 1:
         if composer[0] == "Anonymous" or composer[1] == "":
             mediadir += escape(composer[0])
@@ -855,9 +860,9 @@ def createbox(mydir, workdir, bookletdir, mediadir): # Function to create folder
 def movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle): # Funtion to move folder to box
     #print(f"Debug: {workdir, boxdir, boxpath}")
     try:
-        print(f"Debug: mediadir {mediadir}")
-        print(f"Debug: workdir {workdir}")
-        print(f"Debug: boxkdir {boxdir}")
+        #print(f"Debug: mediadir {mediadir}")
+        #print(f"Debug: workdir {workdir}")
+        #print(f"Debug: boxkdir {boxdir}")
         if numberofcomposers == 1:
             boxname = os.path.basename(os.path.dirname(workdir))
             boxname = re.sub(r'\._CD\d+$', '', boxname)
@@ -868,8 +873,8 @@ def movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle): # Fu
             boxfolder = os.path.join(boxdir, boxname)
         #print(f"Debug: {workdir, boxname, boxpath, boxfolder}")
         shutil.move(mediadir, boxfolder)
-        print(f"Debug 1: {boxname, boxmediatitle, boxfolder}")
-        print(f"\nFolder successfully moved to {boxfolder}")
+        #print(f"Debug 1: {boxname, boxmediatitle, boxfolder}")
+        #print(f"\nFolder successfully moved to {boxfolder}")
         return
     except Exception as e:
         print(f"\nError moving media directory: {e}")
@@ -881,7 +886,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     if cdnumber > 1:
         boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir = boxinfo(mydir, askbox, cdnumber)
         numberofcomposers = boxnumberofcomposers
-        print(f"Debug: boxnumber of composers: {boxnumberofcomposers}")
+        #print(f"Debug: boxnumber of composers: {boxnumberofcomposers}")
         composer = [boxlastname, boxfirstname]
         mediatitle = boxmediatitle
         #print(f"Debug: boxinfo successful: bnoc: {boxnumberofcomposers}, bln: {boxlastname}, bfn: {boxfirstname}, bcs: {boxcomposers}, bmt: {boxmediatitle}")
@@ -898,6 +903,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
         ask_to_skip = "skip"
     else:
         ask_to_skip = input("Press ENTER to continue or type 'skip' to proceed without updating the Excel sheet: ").strip().lower()
+        check_exit(ask_to_skip)
         if ask_to_skip == "skip":
             print("Skipping Excel sheet uptade.")
         else:
@@ -969,10 +975,12 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
                         else:
                             try:
                                 newcdnumber = int(input("Number of current CD: "))
-                                if cdnumber < 0:
+                                if newcdnumber < 0:
                                     print("Invalid input. Please provide a natural number.")
-                                elif cdnumber == "":
+                                    continue
+                                elif newcdnumber == "":
                                     print("Empty input. Please provide a natural number.")
+                                    continue
                                 else:
                                     mediatitle += f"._CD{str(newcdnumber)}"
                                     print(f"Box number successfully appended. New mediatitle: {mediatitle}")
