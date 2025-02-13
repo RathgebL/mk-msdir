@@ -463,7 +463,7 @@ def escape(string): # Function to get the desired form for the output
     string = string.replace(" ", "_")
     string = string.replace("-", "--")
     string = string.replace(":", "")
-    string = string.replace("/", "")
+    string = string.replace("/", "_")
     string = string.replace("\\", "")
 
     #replacements for windows
@@ -508,9 +508,9 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
         while True:
             if askbox == "y" or askbox == "":
                 try:
-                    print(f"Debug: CD pre {cdnumber}")
+                    #print(f"Debug: CD pre {cdnumber}")
                     cdnumber = int(input("Number of current CD: "))
-                    print(f"Debug: CD post {cdnumber}")
+                    #print(f"Debug: CD post {cdnumber}")
                     if cdnumber < 0:
                         print("Invalid input. Please provide a natural number.")
                     elif cdnumber == "":
@@ -529,6 +529,18 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
 
     return cdnumber
 
+def askboxinfo(askbox, bookletstatus):
+    if (askbox == "y" or askbox == "") and not bookletstatus == 1:
+        while True:
+            askboxinfo = input("Do you want to get information from the previous CD in the Box? (y(Default)/n) ").strip().lower()
+            check_exit(askboxinfo)
+            if askboxinfo not in ("y", "n", ""):
+                print("Invalid input. Please enter 'y' or 'n'.")
+            else:
+                break
+                
+        return askboxinfo
+
 def boxinfo(mydir, askbox, cdnumber):
     if askbox == "y" or askbox == "" and not cdnumber == 1:
         currentaudiodirnumber = int(os.path.basename(mydir).replace("audio", ""))
@@ -540,22 +552,35 @@ def boxinfo(mydir, askbox, cdnumber):
         boxmediatitle = ""
         try: 
             box = os.listdir(boxdir)
-            print(f"Debug: currentaudiodirnumber: {currentaudiodirnumber}")
-            print(f"Debug: boxdir: {boxdir}")
-            print(f"Debug: box: {box}")
+            #print(f"Debug: currentaudiodirnumber: {currentaudiodirnumber}")
+            #print(f"Debug: boxdir: {boxdir}")
+            #print(f"Debug: box: {box}")
             if len(box) == 2: # Boxfolder and .DS_Store
                 for folder in box:
                     if os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and not "+" in folder and "," in folder and "-" in folder and not folder.startswith("Verschiedene"):
                         boxnumberofcomposers = 1
-                        lastname_firstname, boxmediatitle = folder.split("-")
+                        lastname_firstname, boxmediatitle = folder.split("-", maxsplit=1)
+                        #boxmediatitle = boxmediatitle.replace("--", "-")
                         boxlastname, boxfirstname = lastname_firstname.split(",")
                         print("Debug: CASE1")
                     elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Verschiedene") and "-" in folder:
                         boxnumberofcomposers = 5
                         boxmediatitle = folder.split("-", 1)[1]
+                        #boxmediatitle = boxmediatitle.replace("--", "-")
                         print("Debug: CASE2")
                     elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Anonymous") and "-" in folder:
+                        boxnumberofcomposers = 1
+                        anonymous, boxmediatitle = folder.split("-", maxsplit=1)
+                        #boxmediatitle = boxmediatitle.replace("--", "-")
+                        boxlastname = anonymous
+                        boxfirstname = ""
                         print("Debug: CASE3")
+                    elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and "+" in folder and "-" in folder:
+                        boxnumberofcomposers = 2 # It might not be exactly two but for now it just needs to be a number bigger than 1
+                        boxmediatitle = folder.split("-", 1)[1]
+                        print("Debug: CASE4")
+                    else:
+                        print("No case matched. You might have discorverd a new case!\nHave fun fixing it (cmd + f the message to find the code where to start) ")
             else:
                 print("Multiple folders found in box. Please check and try again. ")
             
@@ -712,8 +737,10 @@ def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): #
     #print(f"Debug: Number of Composers: {numberofcomposers}")
     #print(f"Debug: Composer: {composer}")
     if numberofcomposers == 1:
-        if composer[0] == "Anonymous" or composer[1] == "":
+        if composer[1] == "" and not composer[0] == "Anonymous":
             mediadir += escape(composer[0])
+        elif composer[0] == "Anonymous":
+            mediadir += "Verschiedene"        
         else:
             mediadir += escape(composer[0]) + "," + escape(composer[1])
     elif numberofcomposers > 4:
@@ -723,7 +750,7 @@ def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): #
         composersfordir = "+".join([escape(s[0]) + "," + escape(s[1]) for s in allcomposers])
         mediadir += composersfordir
 
-    mediadir += "-" + escape(mediatitle)
+    mediadir += "-" + escape(mediatitle).replace("----", "--")
     os.mkdir(mediadir) # Create folder (Familyname,Firstname-Mediatitle)
     
     return mediadir
@@ -858,23 +885,27 @@ def createbox(mydir, workdir, bookletdir, mediadir): # Function to create folder
     return boxpath
 
 def movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle): # Funtion to move folder to box
-    #print(f"Debug: {workdir, boxdir, boxpath}")
+    print(f"Debug: boxmediatitle: {boxmediatitle}")
+    print(f"Debug: mediadir {mediadir}")
+    print(f"Debug: workdir {workdir}")
+    print(f"Debug: boxkdir {boxdir}")
+    print(f"Debug: numberofcomposers {numberofcomposers}")
     try:
-        #print(f"Debug: mediadir {mediadir}")
-        #print(f"Debug: workdir {workdir}")
-        #print(f"Debug: boxkdir {boxdir}")
-        if numberofcomposers == 1:
+        
+        if numberofcomposers < 5:
             boxname = os.path.basename(os.path.dirname(workdir))
             boxname = re.sub(r'\._CD\d+$', '', boxname)
+            print(f"Debug Boxname: {boxname}")
             boxfolder = os.path.join(boxdir, boxname)
+            print(f"Debug Boxfolder: {boxfolder}")
         else:
             boxmediatitle = re.sub(r'\._CD\d+$', '', boxmediatitle)
             boxname = "Verschiedene-" + boxmediatitle
             boxfolder = os.path.join(boxdir, boxname)
-        #print(f"Debug: {workdir, boxname, boxpath, boxfolder}")
+        #print(f"Debug: {workdir, boxname, boxfolder}")
         shutil.move(mediadir, boxfolder)
         #print(f"Debug 1: {boxname, boxmediatitle, boxfolder}")
-        #print(f"\nFolder successfully moved to {boxfolder}")
+        print(f"\nFolder successfully moved to {boxfolder}")
         return
     except Exception as e:
         print(f"\nError moving media directory: {e}")
@@ -883,7 +914,8 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     allfiles = files(mydir)
     bookletstatus, cdnumber, askbox = boxcheck(mydir)
     cdnumber = getcdnumber(askbox, bookletstatus, cdnumber)
-    if cdnumber > 1:
+    wantboxinfo = askboxinfo(askbox, bookletstatus)
+    if cdnumber > 1 and (wantboxinfo == "y" or wantboxinfo == ""):
         boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir = boxinfo(mydir, askbox, cdnumber)
         numberofcomposers = boxnumberofcomposers
         #print(f"Debug: boxnumber of composers: {boxnumberofcomposers}")
@@ -892,7 +924,9 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
         #print(f"Debug: boxinfo successful: bnoc: {boxnumberofcomposers}, bln: {boxlastname}, bfn: {boxfirstname}, bcs: {boxcomposers}, bmt: {boxmediatitle}")
     else:
         mediatitle = getmediatitle(askbox, cdnumber)
+        #boxmediatitle = mediatitle
         numberofcomposers, composer = getnumberofcomposers()
+        #_, _, _, _, boxdir = boxinfo(mydir, askbox, cdnumber)
     current_date = datetime.now()
     day = dateform(current_date)
     audiodirname = dirname(mydir)
@@ -1013,6 +1047,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 
     # Process works
     works, allcomposers = getwork(allfiles, numberofcomposers, composer)
+    print(f"Debug allcomposers: {allcomposers}")
     mediadir = getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle)
     workdir, movlist, summary = getworkdir(works, allfiles, mediadir)
 
@@ -1030,7 +1065,10 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     
     # Call move to box function
     if (askbox == "y" or askbox == "") and bookletstatus == 0:
-        movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle)
+        try:
+            movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle)
+        except Exception as e:
+            print(f"\nError while trying to move the folder: {e}")
 
     return mediadir   
 
@@ -1078,4 +1116,4 @@ else:
     print("\nEverything done!")
 
 
-# 29-05-24
+# 10-02-25
