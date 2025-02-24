@@ -562,23 +562,23 @@ def boxinfo(mydir, askbox, cdnumber):
                         lastname_firstname, boxmediatitle = folder.split("-", maxsplit=1)
                         #boxmediatitle = boxmediatitle.replace("--", "-")
                         boxlastname, boxfirstname = lastname_firstname.split(",")
-                        print("Debug: CASE1")
+                        #print("Debug: CASE1")
                     elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Verschiedene") and "-" in folder:
                         boxnumberofcomposers = 5
                         boxmediatitle = folder.split("-", 1)[1]
                         #boxmediatitle = boxmediatitle.replace("--", "-")
-                        print("Debug: CASE2")
+                        #print("Debug: CASE2")
                     elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Anonymous") and "-" in folder:
                         boxnumberofcomposers = 1
                         anonymous, boxmediatitle = folder.split("-", maxsplit=1)
                         #boxmediatitle = boxmediatitle.replace("--", "-")
                         boxlastname = anonymous
                         boxfirstname = ""
-                        print("Debug: CASE3")
+                        #print("Debug: CASE3")
                     elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and "+" in folder and "-" in folder:
                         boxnumberofcomposers = 2 # It might not be exactly two but for now it just needs to be a number bigger than 1
                         boxmediatitle = folder.split("-", 1)[1]
-                        print("Debug: CASE4")
+                        #print("Debug: CASE4")
                     else:
                         print("No case matched. You might have discorverd a new case!\nHave fun fixing it (cmd + f the message to find the code where to start) ")
             else:
@@ -885,26 +885,24 @@ def createbox(mydir, workdir, bookletdir, mediadir): # Function to create folder
     return boxpath
 
 def movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle): # Funtion to move folder to box
-    print(f"Debug: boxmediatitle: {boxmediatitle}")
-    print(f"Debug: mediadir {mediadir}")
-    print(f"Debug: workdir {workdir}")
-    print(f"Debug: boxkdir {boxdir}")
-    print(f"Debug: numberofcomposers {numberofcomposers}")
+    #print(f"Debug: boxmediatitle {boxmediatitle}")
+    #print(f"Debug: mediadir {mediadir}")
+    #print(f"Debug: workdir {workdir}")
+    #print(f"Debug: boxkdir {boxdir}")
+    #print(f"Debug: numberofcomposers {numberofcomposers}")
     try:
         
         if numberofcomposers < 5:
             boxname = os.path.basename(os.path.dirname(workdir))
             boxname = re.sub(r'\._CD\d+$', '', boxname)
-            print(f"Debug Boxname: {boxname}")
+            #print(f"Debug: boxname {boxname}")
             boxfolder = os.path.join(boxdir, boxname)
-            print(f"Debug Boxfolder: {boxfolder}")
+            #print(f"Debug: boxfolder {boxfolder}")
         else:
             boxmediatitle = re.sub(r'\._CD\d+$', '', boxmediatitle)
             boxname = "Verschiedene-" + boxmediatitle
             boxfolder = os.path.join(boxdir, boxname)
-        #print(f"Debug: {workdir, boxname, boxfolder}")
         shutil.move(mediadir, boxfolder)
-        #print(f"Debug 1: {boxname, boxmediatitle, boxfolder}")
         print(f"\nFolder successfully moved to {boxfolder}")
         return
     except Exception as e:
@@ -1047,7 +1045,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 
     # Process works
     works, allcomposers = getwork(allfiles, numberofcomposers, composer)
-    print(f"Debug allcomposers: {allcomposers}")
+    #print(f"Debug allcomposers: {allcomposers}")
     mediadir = getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle)
     workdir, movlist, summary = getworkdir(works, allfiles, mediadir)
 
