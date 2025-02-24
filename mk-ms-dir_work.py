@@ -183,8 +183,9 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 print("Invalid input. Please enter 'y' or 'n'.")
                 continue
 
-        while True: # Check for uppercase characters in the moddle of words
+        while True: # Check for uppercase characters in the middle of words
             words = user_input.split()
+            print(f"Debug: {words}")
             char_exceptions = { "„","\"", "\'", "‚", "‘" "-", "(", "/", "‘", "«", "»", "‹", "›"}
             for i, word in enumerate(words):             
                 if "-" in word and not word.isupper():
@@ -198,6 +199,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                                 if (confirm == "y" or confirm == ""):
                                     updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
                                     updated_parts.append(updated_part)
+                                    print(f"Your input has been changed to: {updated_part}")
                                 elif not confirm == "n":
                                     print("Invalid input. Please enter 'y' or 'n'.")
                                     continue
@@ -618,9 +620,21 @@ def excelinfo(numberofcomposers, composer):
     
     return interpreterlist, medianumber, composerlist
 
-def excel(interpreterlist, composerlist, medianumber, dateform, dirname, mediatitle):
+def excel(interpreterlist, composerlist, medianumber, dateform, dirname, mediatitle, numberofcomposers):
     try:
-        new_data = {
+        if numberofcomposers > 1:
+            new_data = {
+                    'CD Number': [medianumber],
+                    'Composer': ["Verschiedene"],
+                    'Mediatitle': [mediatitle],
+                    'Interpreters': [', '.join(interpreterlist)],
+                    'Place': [dirname],
+                    'Status': [""],
+                    'Date': [dateform],
+                    'Comment' : [""]
+                    }
+        else:
+            new_data = {
                     'CD Number': [medianumber],
                     'Composer': [f"{composerlist[0]}, {composerlist[1]}"],
                     'Mediatitle': [mediatitle],
@@ -940,7 +954,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
             print("Skipping Excel sheet uptade.")
         else:
             interpreterlist, medianumber, composerlist = excelinfo(numberofcomposers, composer)
-            combined_df, excelpath, medianumber = excel(interpreterlist, composerlist, medianumber, day, audiodirname, mediatitle)
+            combined_df, excelpath, medianumber = excel(interpreterlist, composerlist, medianumber, day, audiodirname, mediatitle, numberofcomposers)
 
     if ask_to_skip == "skip": # Define composer for case where Excel was skipped
         composerlist = [composer[0], composer[1]]
@@ -960,9 +974,9 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
             i = 0
             if numberofcomposers == 1:
                 highesti = 3
-                print(f"2. Family name of composer: {composerlist[0]}")
-                print(f"3. First (middle) name of composer: {composerlist[1]}")
-                if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
+                print(f"2. First (middle) name of composer: {composerlist[1]}")
+                print(f"3. Family name of composer: {composerlist[0]}")
+                if ask_to_skip != "skip":
                     for i, interpreter in enumerate(interpreterlist, start=4):
                         print(f"{i}. Edit name of interpreter: {interpreter}")
                     print(f"{i+1}. Edit number of media (four digits): {medianumber}")
@@ -970,7 +984,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
             else:
                 highesti = 2
                 print(f"2. Number of composer: {numberofcomposers}")
-                if (ask_to_skip != "skip" and (cdnumber == 1 or (cdnumber != 1 and askbox == "n"))):
+                if ask_to_skip != "skip":
                     for i, interpreter in enumerate(interpreterlist, start=3):
                         print(f"{i}. Name of interpreter: {interpreter}")
                     print(f"{i+1}. Number of media (four digits): {medianumber}")
@@ -987,7 +1001,7 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
                     updatedmedianumber = medianumber
                     updatedcomposerlist = composerlist
                     updatedinterpreterlist = interpreterlist
-                    combined_df, excelpath, medianumber = excel(updatedinterpreterlist, updatedcomposerlist, updatedmedianumber, day, audiodirname, updatedmediatitle)
+                    combined_df, excelpath, medianumber = excel(updatedinterpreterlist, updatedcomposerlist, updatedmedianumber, day, audiodirname, updatedmediatitle, numberofcomposers)
                     writeexcel(combined_df, excelpath)                
                 print("")
                 break
@@ -1019,27 +1033,49 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
                                     break
                             except ValueError:
                                 print("Invalid input. Please enter a numeric value.")                
+            
+            #elif confirm1 == '2' and numberofcomposers > 1:
+            #    try:
+            #        numberofcomposers = int(input("Edit number of composers: "))
+            #        check_exit(numberofcomposers)
+            #        if numberofcomposers < 2:
+            #            print("Invalid input. Please enter a number greater than 1.")
+            #        else:
+            #            break
+            #    except ValueError:
+            #        print("Invalid input. Please enter a numeric value.")
             elif confirm1 == '2' and numberofcomposers == 1:
-                composer[0] = handle_input("Edit family name of composer: ")
-                composerlist = [composer[0], composer[1]]
-            elif confirm1 == '2' and numberofcomposers > 1:
-                try:
-                    numberofcomposers = int(input("Edit number of composers: "))
-                    check_exit(numberofcomposers)
-                    if numberofcomposers < 2:
-                        print("Invalid input. Please enter a number greater than 1.")
-                    else:
-                        break
-                except ValueError:
-                    print("Invalid input. Please enter a numeric value.")
-            elif confirm1 == '3' and numberofcomposers == 1:
                 composer[1] = handle_input("Edit first (middle) name of composer: ")
                 composerlist = [composer[0], composer[1]]
-            elif confirm1.isdigit() and (4 <= int(confirm1) <= highesti) and ask_to_skip != "skip":
+            elif confirm1 == "2" and numberofcomposers != 1:
+                while True:
+                    try:
+                        numberofcomposers = int(input("Edit number of composers: "))
+                        check_exit(numberofcomposers)
+                        if numberofcomposers == 1:
+                            composer[1] = handle_input("First (middle) name of composer: ")
+                            composer[0] = handle_input("Family name of composer: ")
+                            composerlist = [composer[0], composer[1]]
+                            break
+                        elif numberofcomposers < 1:
+                            print("Invalid input. Please enter a number greater than zero.")
+                        else:
+                            break
+                    except ValueError:
+                        print("Invalid input. Please enter a numeric value.")   
+            elif confirm1 == '3' and numberofcomposers == 1:
+                composer[0] = handle_input("Edit family name of composer: ")
+                composerlist = [composer[0], composer[1]]
+            elif confirm1.isdigit() and (4 <= int(confirm1) <= highesti) and ask_to_skip != "skip" and numberofcomposers == 1:
                 if int(confirm1) == highesti:
                     medianumber = getmedianumber()
                 else:
                     interpreterlist[int(confirm1) - 4] = handle_input(f" Edit name of interpreter {int(confirm1) - 3}: ")
+            elif confirm1.isdigit() and (3 <= int(confirm1) <= highesti) and ask_to_skip != "skip" and numberofcomposers != 1:
+                if int(confirm1) == highesti:
+                    medianumber = getmedianumber()
+                else:
+                    interpreterlist[int(confirm1) - 3] = handle_input(f" Edit name of interpreter {int(confirm1) - 2}: ")
             else:
                 print("Invalid input. Please provide a number in range or press ENTER to confirm. ")
 
@@ -1115,3 +1151,5 @@ else:
 
 
 # 10-02-25
+
+# Musik Bildung Praxis Musikerziehung CD
