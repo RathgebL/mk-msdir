@@ -198,9 +198,10 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                         print(f"Debug: 2.2, Parts: {parts}")
                         updated_parts = []
                         for part in parts:
-                            if part and part[1:].isupper():  # Check if part has uppercase after the first character
-                                updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
-                                confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
+                            if not part.isupper() and any(c.isupper() for c in part[1:]):
+                                print(f"Debug: 2.3")
+                                updated_part = part[0] + part[1:].lower()
+                                confirm = input(f"The word '{part}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
                                 check_exit(confirm)
                                 if (confirm == "y" or confirm == ""):
                                     updated_parts.append(updated_part)
