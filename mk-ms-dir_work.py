@@ -183,23 +183,27 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 print("Invalid input. Please enter 'y' or 'n'.")
                 continue
 
+        ################# Not working properly #################
+
         while True: # Check for uppercase characters in the middle of words
             words = user_input.split()
             print(f"Debug: {words}")
             char_exceptions = { "„","\"", "\'", "‚", "‘" "-", "(", "/", "‘", "«", "»", "‹", "›"}
             for i, word in enumerate(words):             
                 if "-" in word and not word.isupper():
+                    print(f"Debug: 1")
                     if word[0] not in char_exceptions:
+                        print(f"Debug: 2")
                         parts = word.split('-')  # Split the word by hyphen
+                        print(f"Debug: 2.2, Parts: {parts}")
                         updated_parts = []
                         for part in parts:
                             if part and part[1:].isupper():  # Check if part has uppercase after the first character
-                                confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                                updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
+                                confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
                                 check_exit(confirm)
                                 if (confirm == "y" or confirm == ""):
-                                    updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
                                     updated_parts.append(updated_part)
-                                    print(f"Your input has been changed to: {updated_part}")
                                 elif not confirm == "n":
                                     print("Invalid input. Please enter 'y' or 'n'.")
                                     continue
@@ -211,11 +215,12 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                             words[i] = updated_word
                             print(f"The word '{word}' has been changed to: '{updated_word}'")
                     elif word[0] in char_exceptions:
+                        print(f"Debug: 3")
                         parts = re.split(r'(?<=\w)(?=-)', word)  # Split the word infront of the hyphen and include it in the second part via lookahead and re.split
                         updated_parts = []
                         for part in parts:
                             if part and part[2:].isupper():  # Check if part has uppercase after the first character
-                                confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                                confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
                                 check_exit(confirm)
                                 if (confirm == "y" or confirm == ""):
                                     updated_part = part[0] + part[1] + part[2:].lower()  # Change everything after the first character to lowercase
@@ -226,27 +231,27 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                             else:
                                 updated_parts.append(part)  # No issue, keep it as is                                
                         
-                        updated_word = '-'.join(updated_parts)
+                        updated_word = ''.join(updated_parts)
                         if updated_word != word:  # If any part was changed, notify the user
                             words[i] = updated_word
                             print(f"The word '{word}' has been changed to: '{updated_word}'")
-                    elif not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
-                        confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
-                        check_exit(confirm)
-                        if (confirm == "y" or confirm == ""):
-                            updated_word = word[0] + word[1:].lower()
-                            words[i] = updated_word
-                            print(f"The word '{word}' has been changed to: '{updated_word}'")
-                        elif not confirm == "n":
-                            print("Invalid input. Please enter 'y' or 'n'.")
-                            continue
-                    elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
-                        confirm = input(f"Your input contains uppercase letters in the middle of the word '{word}'. Would you like to convert these to lowercase (except the first letter)? (y(Default)/n) ").strip().lower()
+                elif not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
+                    print(f"Debug: 4")
+                    updated_word = word[0] + word[1:].lower()
+                    confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
+                    check_exit(confirm)
+                    if (confirm == "y" or confirm == ""):
+                        words[i] = updated_word
+                    elif not confirm == "n":
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        continue
+                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
+                        print(f"Debug: 5")
+                        updated_word = word[0] + word[1] + word[2:].lower()
+                        confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
                         check_exit(confirm)
                         if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
-                            updated_word = word[0] + word[1] + word[2:].lower()
                             words[i] = updated_word
-                            print(f"The word '{word}' has been changed to: '{updated_word}'")
                         elif not confirm == "n":
                             print("Invalid input. Please enter 'y' or 'n'.")
                             continue
