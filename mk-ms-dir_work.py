@@ -19,23 +19,18 @@
 ##                      - deleting unprocessed files
 ##                      - opening all booklet files
 
-
-# More testing for move final folder required!
-
 # --- importing
 import sys
 import os
 import re
+import time
 import shutil
+from datetime import datetime
 from tkinter import filedialog
+# Import for booklet processing (just on Mac)
 if sys.platform == "darwin":
     from PIL import Image, ImageFilter
     import pandas as pd
-from datetime import datetime
-import time
-
-# Import for booklet processing (just on Mac)
-if sys.platform == "darwin":
     import subprocess
 
 # --- sub routines
@@ -184,31 +179,34 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                 print("Invalid input. Please enter 'y' or 'n'.")
                 continue
 
-        ################# Not working properly #################
-
         while True: # Check for uppercase characters in the middle of words
             words = user_input.split()
-            print(f"Debug: {words}")
-            char_exceptions = { "„","\"", "\'", "‚", "‘" "-", "(", "/", "‘", "«", "»", "‹", "›"}
+            #print(f"Debug: {words}")
+            char_exceptions = { "„","\"", "\'", "‚", "‘", "-", "(", "/", "‘", "«", "»", "‹", "›"}
             for i, word in enumerate(words):             
                 if "-" in word and not word.isupper():
-                    print(f"Debug: 1")
-                    if word[0] not in char_exceptions:
-                        print(f"Debug: 2")
+                    #print(f"Debug: 1")
+                    if len(word) > 1 and word[0] not in char_exceptions and word[1] not in char_exceptions:
+                        #print(f"Debug: 2")
                         parts = word.split('-')  # Split the word by hyphen
-                        print(f"Debug: 2.2, Parts: {parts}")
+                        #print(f"Debug: 2.2, Parts: {parts}")
                         updated_parts = []
                         for part in parts:
                             if not part.isupper() and any(c.isupper() for c in part[1:]):
-                                print(f"Debug: 2.3")
+                                #print(f"Debug: 2.3")
                                 updated_part = part[0] + part[1:].lower()
-                                confirm = input(f"The word '{part}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
-                                check_exit(confirm)
-                                if (confirm == "y" or confirm == ""):
-                                    updated_parts.append(updated_part)
-                                elif not confirm == "n":
-                                    print("Invalid input. Please enter 'y' or 'n'.")
-                                    continue
+                                while True:
+                                    confirm = input(f"The word '{part}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
+                                    check_exit(confirm)
+                                    if (confirm == "y" or confirm == ""):
+                                        updated_parts.append(updated_part)
+                                        break
+                                    elif confirm == "n":
+                                        updated_parts.append(part)
+                                        break
+                                    else:
+                                        print("Invalid input. Please enter 'y' or 'n'.")
+                                        continue
                             else:
                                 updated_parts.append(part)  # No issue, keep it as is                                
                         
@@ -216,47 +214,114 @@ def handle_input(prompt): # Function to check for empty, single character and lo
                         if updated_word != word:  # If any part was changed, notify the user
                             words[i] = updated_word
                             print(f"The word '{word}' has been changed to: '{updated_word}'")
-                    elif word[0] in char_exceptions:
-                        print(f"Debug: 3")
-                        parts = re.split(r'(?<=\w)(?=-)', word)  # Split the word infront of the hyphen and include it in the second part via lookahead and re.split
+                    elif len(word) > 1 and word[0] in char_exceptions and word[1] in char_exceptions:
+                        #print(f"Debug: 3")
+                        firsttwochar = word[:2]
+                        newword = word[2:]
+                        #print(f"Debug newword: {newword}, first two characters: {firsttwochar}")
+                        parts = newword.split('-')  # Split the word by hyphen
+                        #print(f"Debug: 3.2, Parts: {parts}")
                         updated_parts = []
                         for part in parts:
-                            if part and part[2:].isupper():  # Check if part has uppercase after the first character
-                                confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
-                                check_exit(confirm)
-                                if (confirm == "y" or confirm == ""):
-                                    updated_part = part[0] + part[1] + part[2:].lower()  # Change everything after the first character to lowercase
-                                    updated_parts.append(updated_part)
-                                elif not confirm == "n":
-                                    print("Invalid input. Please enter 'y' or 'n'.")
-                                    continue
+                            if not part.isupper() and any(c.isupper() for c in part[1:]):  # Check if part has uppercase after the first character
+                                updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
+                                while True:
+                                    confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
+                                    check_exit(confirm)
+                                    if (confirm == "y" or confirm == ""):
+                                        updated_parts.append(updated_part)
+                                        break
+                                    elif confirm == "n":
+                                        updated_parts.append(part)
+                                        break
+                                    else:
+                                        print("Invalid input. Please enter 'y' or 'n'.")
+                                        continue
                             else:
                                 updated_parts.append(part)  # No issue, keep it as is                                
                         
-                        updated_word = ''.join(updated_parts)
+                        joined_parts = '-'.join(updated_parts)
+                        updated_word = firsttwochar + joined_parts
                         if updated_word != word:  # If any part was changed, notify the user
                             words[i] = updated_word
                             print(f"The word '{word}' has been changed to: '{updated_word}'")
-                elif not word.isupper() and any(c.isupper() for c in word[1:]) and word[0] not in char_exceptions:
-                    print(f"Debug: 4")
+                    elif word[0] in char_exceptions:
+                        #print(f"Debug: 3")
+                        firstchar = word[:1]
+                        newword = word[1:]
+                        #print(f"Debug newword: {newword}")
+                        parts = newword.split('-')  # Split the word by hyphen
+                        #print(f"Debug: 3.2, Parts: {parts}")
+                        updated_parts = []
+                        for part in parts:
+                            if not part.isupper() and any(c.isupper() for c in part[2:]):  # Check if part has uppercase after the second character
+                                updated_part = part[0] + part[1:].lower()  # Change everything after the first character to lowercase
+                                while True:
+                                    confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_part}'? (y(Default)/n) ").strip().lower()
+                                    check_exit(confirm)
+                                    if (confirm == "y" or confirm == ""):
+                                        updated_parts.append(updated_part)
+                                        break
+                                    elif confirm == "n":
+                                        updated_parts.append(part)
+                                        break
+                                    else:
+                                        print("Invalid input. Please enter 'y' or 'n'.")
+                                        continue
+                            else:
+                                updated_parts.append(part)  # No issue, keep it as is                                
+                        
+                        joined_parts = '-'.join(updated_parts)
+                        updated_word = firstchar + joined_parts
+                        if updated_word != word:  # If any part was changed, notify the user
+                            words[i] = updated_word
+                            print(f"The word '{word}' has been changed to: '{updated_word}'")
+                elif not word.isupper() and any(c.isupper() for c in word[1:]) and len(word) > 1 and word[0] not in char_exceptions and word[1] not in char_exceptions:
+                    #print(f"Debug: 4")
                     updated_word = word[0] + word[1:].lower()
-                    confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
-                    check_exit(confirm)
-                    if (confirm == "y" or confirm == ""):
-                        words[i] = updated_word
-                    elif not confirm == "n":
-                        print("Invalid input. Please enter 'y' or 'n'.")
-                        continue
-                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
-                        print(f"Debug: 5")
-                        updated_word = word[0] + word[1] + word[2:].lower()
+                    while True:
                         confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
                         check_exit(confirm)
-                        if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
+                        if (confirm == "y" or confirm == ""):
                             words[i] = updated_word
-                        elif not confirm == "n":
+                            break
+                        elif confirm == "n":
+                            words[i] = word
+                            break
+                        else:
                             print("Invalid input. Please enter 'y' or 'n'.")
-                            continue
+                            continue 
+                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions and word[1] in char_exceptions:
+                        #print(f"Debug: 5")
+                        updated_word = word[:3] + word[3:].lower()
+                        while True:
+                            confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
+                            check_exit(confirm)
+                            if (confirm == "y" or confirm == ""):
+                                words[i] = updated_word
+                                break
+                            elif confirm == "n":
+                                words[i] = word
+                                break
+                            else:
+                                print("Invalid input. Please enter 'y' or 'n'.")
+                                continue
+                elif not word.isupper() and any(c.isupper() for c in word[2:]) and word[0] in char_exceptions:
+                        #print(f"Debug: 5")
+                        updated_word = word[:2] + word[2:].lower()
+                        while True:
+                            confirm = input(f"The word '{word}' contains uppercase letters in the middle. Would you like to convert it to '{updated_word}'? (y(Default)/n) ").strip().lower()
+                            check_exit(confirm)
+                            if word[0] in char_exceptions and (confirm == "y" or confirm == ""):
+                                words[i] = updated_word
+                                break
+                            elif confirm == "n":
+                                words[i] = word
+                                break
+                            else:
+                                print("Invalid input. Please enter 'y' or 'n'.")
+                                continue            
+                
 
             user_input = ' '.join(words)  # Reconstruct the user input from the modified words list
             break
@@ -538,8 +603,27 @@ def getcdnumber(askbox,bookletstatus, cdnumber): # First CD of a box
 
     return cdnumber
 
-def askboxinfo(askbox, bookletstatus):
-    if (askbox == "y" or askbox == "") and not bookletstatus == 1:
+def getrecinfo():
+    while True:
+        try:
+            recyear = int(input("Enter the year of the recording (four digits): "))
+            check_exit(recyear)
+            num_str = str(recyear)
+            if len(num_str) == 4:
+                break
+            else:
+                print("Please enter a valid number (four digits).")
+        except ValueError:
+            print("Invalid input. Please enter a numeric value.")
+
+    while True:
+        conductor = handle_input("Enter the family name of the conductor: ")
+        break
+
+    return recyear, conductor
+
+def askboxinfo(askbox, bookletstatus, cdnumber):
+    if (askbox == "y" or askbox == "") and not bookletstatus == 1 and cdnumber != 1:
         while True:
             askboxinfo = input("Do you want to get information from the previous CD in the Box? (y(Default)/n) ").strip().lower()
             check_exit(askboxinfo)
@@ -551,53 +635,113 @@ def askboxinfo(askbox, bookletstatus):
         return askboxinfo
 
 def boxinfo(mydir, askbox, cdnumber):
-    if askbox == "y" or askbox == "" and not cdnumber == 1:
-        currentaudiodirnumber = int(os.path.basename(mydir).replace("audio", ""))
-        boxdirnumber = currentaudiodirnumber - cdnumber + 1
-        boxdir = mydir.replace(str(currentaudiodirnumber), str(boxdirnumber))
+    if (askbox == "y" or askbox == "") and not cdnumber == 1:
         boxfirstname = ""
         boxlastname = ""
         boxnumberofcomposers = ""
         boxmediatitle = ""
-        try: 
-            box = os.listdir(boxdir)
-            #print(f"Debug: currentaudiodirnumber: {currentaudiodirnumber}")
-            #print(f"Debug: boxdir: {boxdir}")
-            #print(f"Debug: box: {box}")
-            if len(box) == 2: # Boxfolder and .DS_Store
-                for folder in box:
-                    if os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and not "+" in folder and "," in folder and "-" in folder and not folder.startswith("Verschiedene"):
-                        boxnumberofcomposers = 1
-                        lastname_firstname, boxmediatitle = folder.split("-", maxsplit=1)
-                        #boxmediatitle = boxmediatitle.replace("--", "-")
-                        boxlastname, boxfirstname = lastname_firstname.split(",")
-                        #print("Debug: CASE1")
-                    elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Verschiedene") and "-" in folder:
-                        boxnumberofcomposers = 5
-                        boxmediatitle = folder.split("-", 1)[1]
-                        #boxmediatitle = boxmediatitle.replace("--", "-")
-                        #print("Debug: CASE2")
-                    elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Anonymous") and "-" in folder:
-                        boxnumberofcomposers = 1
-                        anonymous, boxmediatitle = folder.split("-", maxsplit=1)
-                        #boxmediatitle = boxmediatitle.replace("--", "-")
-                        boxlastname = anonymous
-                        boxfirstname = ""
-                        #print("Debug: CASE3")
-                    elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and "+" in folder and "-" in folder:
-                        boxnumberofcomposers = 2 # It might not be exactly two but for now it just needs to be a number bigger than 1
-                        boxmediatitle = folder.split("-", 1)[1]
-                        #print("Debug: CASE4")
-                    else:
-                        print("No case matched. You might have discorverd a new case!\nHave fun fixing it (cmd + f the message to find the code where to start) ")
+        if sys.platform == "darwin": # for Mac
+            try:
+                currentaudiodirnumber = int(os.path.basename(mydir).replace("audio", ""))
+                boxdirnumber = currentaudiodirnumber - cdnumber + 1
+                boxdir = mydir.replace(str(currentaudiodirnumber), str(boxdirnumber))
+            except ValueError as e:
+                print(f"\nError: {e}\nExiting ... ")
+                sys.exit(1)
+            
+            try: 
+                box = os.listdir(boxdir)
+                # print(f"Debug: currentaudiodirnumber: {currentaudiodirnumber}")
+                # print(f"Debug: boxdir: {boxdir}")
+                # print(f"Debug: box: {box}")
+                if len(box) == 2: # Boxfolder and .DS_Store
+                    for folder in [f for f in box if f != ".DS_Store"]:
+                        if os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and not "+" in folder and "," in folder and "-" in folder and not folder.startswith("Verschiedene"):
+                            boxnumberofcomposers = 1
+                            lastname_firstname, boxmediatitle = folder.split("-", maxsplit=1)
+                            boxlastname, boxfirstname = lastname_firstname.split(",")
+                            #print("Debug: CASE1")
+                        elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Verschiedene") and "-" in folder:
+                            boxnumberofcomposers = 5
+                            boxmediatitle = folder.split("-", 1)[1]
+                            #print("Debug: CASE2")
+                        elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and folder.startswith("Anonymous") and "-" in folder:
+                            boxnumberofcomposers = 1
+                            anonymous, boxmediatitle = folder.split("-", maxsplit=1)
+                            boxlastname = anonymous
+                            boxfirstname = ""
+                            #print("Debug: CASE3")
+                        elif os.path.isdir(os.path.join(boxdir, folder)) and os.path.join(boxdir, folder, "booklet") and "+" in folder and "-" in folder:
+                            boxnumberofcomposers = 2 # It might not be exactly be two but for now it just needs to be a number bigger than 1
+                            boxmediatitle = folder.split("-", 1)[1]
+                            #print("Debug: CASE4")
+                        else:
+                            print("No case matched. You might have discorverd a new case!\nHave fun fixing it (cmd + f the message to find the code where to start) ")
+                else:
+                    print("Multiple folders found in box. Please check and try again.\n")
+                
+                boxmediatitle += f"._CD{str(cdnumber)}"
+                # print(f"Debug 2: boxdir: {boxdir}")
+                return boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir     
+            except FileNotFoundError:
+                print("No box folder found.")
+        else: # for Windows
+            pattern = re.compile(r"_\(\d{4},[^)]+\)$")  # Matches _(year,str)
+            matching_folders = [f for f in os.listdir(os.path.dirname(mydir)) if pattern.search(f)]
+            if len(matching_folders) == 1:
+                box = os.path.join(os.path.dirname(mydir), matching_folders[0])
+                print(f"Found one match: {box}")
+            elif len(matching_folders) > 1:
+                print("Multiple potential boxfolders found:")
+                for i, folder in enumerate(matching_folders):
+                    print(f"{i + 1}: {folder}")
+                while True:
+                    try:
+                        choice = int(input("Enter the number of the folder you want to use: ")) - 1
+                        if 0 <= choice < len(matching_folders):
+                            box = os.path.join(os.path.dirname(mydir), matching_folders[choice])
+                            break
+                        else:
+                            print("Invalid choice, please enter a valid number.")
+                    except ValueError:
+                        print("Invalid input, please enter a number.")
             else:
-                print("Multiple folders found in box. Please check and try again. ")
-            
-            boxmediatitle += f"._CD{str(cdnumber)}"
-            return boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir
-            
-        except FileNotFoundError:
-            print("No box folder found.")
+                print("No matching folders found. Exiting ... ")
+                sys.exit(1)
+
+            try: 
+                # print(f"Debug: box: {box}")
+                folder = os.path.basename(box)
+                if os.path.isdir(box) and os.path.join(box, "booklet") and not "+" in folder and "," in folder and "-" in folder and not folder.startswith("Verschiedene"):
+                    boxnumberofcomposers = 1
+                    lastname_firstname, boxmediatitle = folder.split("-", maxsplit=1)
+                    boxlastname, boxfirstname = lastname_firstname.split(",")
+                    #print("Debug: CASE1")
+                elif os.path.isdir(box) and os.path.join(box, "booklet") and folder.startswith("Verschiedene") and "-" in folder:
+                    boxnumberofcomposers = 5
+                    boxmediatitle = folder.split("-", 1)[1]
+                    #print("Debug: CASE2")
+                elif os.path.isdir(box) and os.path.join(box, "booklet") and folder.startswith("Anonymous") and "-" in folder:
+                    boxnumberofcomposers = 1
+                    anonymous, boxmediatitle = folder.split("-", maxsplit=1)
+                    boxlastname = anonymous
+                    boxfirstname = ""
+                    #print("Debug: CASE3")
+                elif os.path.isdir(box) and os.path.join(box, "booklet") and "+" in folder and "-" in folder:
+                    boxnumberofcomposers = 2 # It might not be exactly be two but for now it just needs to be a number bigger than 1
+                    boxmediatitle = folder.split("-", 1)[1]
+                    #print("Debug: CASE4")
+                else:
+                    print("No case matched. You might have discorverd a new case!\nHave fun fixing it (cmd + f the message to find the code where to start) ")        
+                
+                pattern = re.compile(r"_\(\d{4},[^)]+\)")
+                boxmediatitle += f"._CD{str(cdnumber)}"
+                boxmediatitle = re.sub(pattern, "", boxmediatitle)
+                boxdir = box
+                # print(f"Debug: boxdir: {boxdir}")
+                return boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir
+            except FileNotFoundError:
+                print("No box folder found.")
         
 def getmediatitle(askbox, cdnumber): # Function to get the mediatitle
     mediatitle = handle_input("\nMediatitle: ")
@@ -778,7 +922,6 @@ def getmediadir(mydir, numberofcomposers, composer, allcomposers, mediatitle): #
 
 def getworkdir(works, allfiles, mediadir): # Function for work directories
     filenr = 0
-    movlist = []
     summary = []
     prev_movtitle = None
     
@@ -834,7 +977,6 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                             print("Shortcut applied. Name of movement changed to 'Adagio'.")
                         break
 
-                movlist.append([int(filenr), movtitle, work[2]])
                 file_path = os.path.join(mydir, file)  # Update file_path for each iteration
                 if os.path.exists(file_path):
                     filename = os.path.join(workdir, escape(work[0])) + "-" + escape(work[2]) + "-%02d" % (multimovnr) + "-" + escape(movtitle) + os.path.splitext(file)[1]
@@ -875,7 +1017,7 @@ def booklet(mydir, mediadir, askbox, cdnumber): # Function that handles the book
             shutil.move(bookletdir, newbookletdir)
             print(f"Moved booklet folder from {bookletdir} -> {newbookletdir}")
     
-    elif sys.platform == "win32": # New booklet funtion for Windows user
+    elif sys.platform == "win32" and askbox == "n": # New booklet funtion for Windows user
         askbookdir = ""
         while True:
             askbookdir = input("No booklet directory found. Do you want to create one? (y(Default)/n) ").strip().lower()
@@ -890,41 +1032,70 @@ def booklet(mydir, mediadir, askbox, cdnumber): # Function that handles the book
 
     return bookletdir
 
-def createbox(mydir, workdir, bookletdir, mediadir): # Function to create folder for box
+def createbox(mydir, workdir, bookletdir, mediadir, recyear, conductor): # Function to create the box folder
     boxname = os.path.basename(os.path.dirname(workdir))
     boxname = re.sub(r'\._CD\d+$', '', boxname)
+    if sys.platform == "win32":
+        recyearstr = str(recyear)
+        boxname = boxname + "_(" + recyearstr + "," + conductor + ")"
+        mydir = os.path.dirname(mydir)
     boxpath = os.path.join(mydir, boxname)
-    #print(f"Debug: {workdir, boxname, boxpath}")
+    # print(f"Debug: {workdir, boxname, boxpath}")
     try:
         os.makedirs(boxpath, exist_ok=True)
         shutil.move(mediadir, boxpath)
         shutil.move(bookletdir, boxpath)
-        print(f"Folder created and media and booklet directory successfully moved to: {boxpath}")
+        print(f"Folder created! Media and booklet directory successfully moved to: {boxpath}")
     except Exception as e:
         print(f"An error occurred while creating or moving the folder: {e}")
+    
+    if sys.platform == "win32":
+        parent_folder = os.path.dirname(mediadir)
+        try: # remove old folder if empty
+            if not os.listdir(parent_folder):  # Check if empty
+                os.rmdir(parent_folder)  # Remove empty folder
+            else:
+                print(f"Folder not empty, not deleting: {parent_folder}")
+        except Exception as e:
+            print(f"Error while deleting {parent_folder}: {e}")
+        print(f"\nDeleted folder: {parent_folder}")
 
     return boxpath
 
-def movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle): # Funtion to move folder to box
-    #print(f"Debug: boxmediatitle {boxmediatitle}")
-    #print(f"Debug: mediadir {mediadir}")
-    #print(f"Debug: workdir {workdir}")
-    #print(f"Debug: boxkdir {boxdir}")
-    #print(f"Debug: numberofcomposers {numberofcomposers}")
-    try:
-        
-        if numberofcomposers < 5:
-            boxname = os.path.basename(os.path.dirname(workdir))
-            boxname = re.sub(r'\._CD\d+$', '', boxname)
-            #print(f"Debug: boxname {boxname}")
-            boxfolder = os.path.join(boxdir, boxname)
-            #print(f"Debug: boxfolder {boxfolder}")
+def movetobox(mediadir, boxdir, numberofcomposers, boxmediatitle): # Funtion to move folder to box
+    parent_folder = os.path.dirname(mediadir)
+    # print(f"Debug: parentfolder {parent_folder}")
+    # print(f"Debug: boxmediatitle\t{boxmediatitle}")
+    # print(f"Debug: mediadir\t{mediadir}")
+    # print(f"Debug: boxkdir\t{boxdir}")
+    # print(f"Debug: numberofcomposers {numberofcomposers}")  
+    if numberofcomposers < 5:
+        boxname = os.path.basename(mediadir)
+        boxname = re.sub(r'\._CD\d+$', '', boxname)
+        # print(f"Debug: boxname {boxname}")
+        boxfolder = os.path.join(boxdir, boxname)
+        # print(f"Debug: boxfolder {boxfolder}")
+    else:
+        boxmediatitle = re.sub(r'\._CD\d+$', '', boxmediatitle)
+        boxname = "Verschiedene-" + boxmediatitle
+        boxfolder = os.path.join(boxdir, boxname)
+    
+    try:    
+        if sys.platform == "darwin":
+            shutil.move(mediadir, boxfolder)
         else:
-            boxmediatitle = re.sub(r'\._CD\d+$', '', boxmediatitle)
-            boxname = "Verschiedene-" + boxmediatitle
-            boxfolder = os.path.join(boxdir, boxname)
-        shutil.move(mediadir, boxfolder)
-        print(f"\nFolder successfully moved to {boxfolder}")
+            boxfolder = boxdir
+            shutil.move(mediadir, boxfolder)
+            try: # remove old folder if empty
+                if not os.listdir(parent_folder):  # Check if empty
+                    os.rmdir(parent_folder)  # Remove empty folder
+                else:
+                    print(f"Folder not empty, not deleting: {parent_folder}")
+            except Exception as e:
+                print(f"Error while deleting {parent_folder}: {e}")
+            print(f"\nDeleted folder: {parent_folder}")
+            print(f"{os.path.basename(mediadir)} successfully moved to {boxfolder}")
+        
         return
     except Exception as e:
         print(f"\nError moving media directory: {e}")
@@ -933,21 +1104,29 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
     allfiles = files(mydir)
     bookletstatus, cdnumber, askbox = boxcheck(mydir)
     cdnumber = getcdnumber(askbox, bookletstatus, cdnumber)
-    if sys.platform == "darwin":
-        wantboxinfo = askboxinfo(askbox, bookletstatus)
-        if cdnumber > 1 and (wantboxinfo == "y" or wantboxinfo == ""):
-            boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir = boxinfo(mydir, askbox, cdnumber)
-            numberofcomposers = boxnumberofcomposers
-            #print(f"Debug: boxnumber of composers: {boxnumberofcomposers}")
-            composer = [boxlastname, boxfirstname]
-            mediatitle = boxmediatitle
-            #print(f"Debug: boxinfo successful: bnoc: {boxnumberofcomposers}, bln: {boxlastname}, bfn: {boxfirstname}, bcs: {boxcomposers}, bmt: {boxmediatitle}")
-        else:
-            mediatitle = getmediatitle(askbox, cdnumber)
-            numberofcomposers, composer = getnumberofcomposers()
+    if sys.platform == "win32" and cdnumber == 1 and (askbox == "y" or askbox == ""):
+        recyear, conductor = getrecinfo()
+    else:
+        recyear = ""
+        conductor = ""
+    wantboxinfo = askboxinfo(askbox, bookletstatus, cdnumber)  
+    if wantboxinfo == "y" or wantboxinfo == "":
+        boxnumberofcomposers, boxlastname, boxfirstname, boxmediatitle, boxdir = boxinfo(mydir, askbox, cdnumber)
+        numberofcomposers = boxnumberofcomposers
+        composer = [boxlastname, boxfirstname]
+        mediatitle = boxmediatitle
+        print(f"Debug: boxinfo successful: bnoc: {boxnumberofcomposers}, bln: {boxlastname}, bfn: {boxfirstname}, bmt: {boxmediatitle}")
     else:
         mediatitle = getmediatitle(askbox, cdnumber)
         numberofcomposers, composer = getnumberofcomposers()
+
+    if sys.platform == "win32" and cdnumber > 1:
+        print(f"\nMediatitle set to: {mediatitle}")
+        if numberofcomposers == 1:
+            print(f"Name of composer set to: {composer[1]} {composer[0]}\n")
+        else:
+            print("Name of composer set to: Verschiedene (This might change depending on the actual number of composers listed on this CD)\n")    
+    
     current_date = datetime.now()
     day = dateform(current_date)
     audiodirname = dirname(mydir)
@@ -1094,12 +1273,12 @@ def main(mydir): # Function to process audiofiles, the booklet folder and boxes 
 
     # Call create box funtion
     if (askbox == "y" or askbox == "") and bookletstatus == 1:
-        createbox(mydir, workdir, bookletdir, mediadir)
+        createbox(mydir, workdir, bookletdir, mediadir, recyear, conductor)
     
     # Call move to box function
-    if (askbox == "y" or askbox == "") and bookletstatus == 0 and sys.platform == "darwin":
+    if (askbox == "y" or askbox == "") and bookletstatus == 0:
         try:
-            movetobox(mediadir, boxdir, workdir, numberofcomposers, boxmediatitle)
+            movetobox(mediadir, boxdir, numberofcomposers, boxmediatitle)
         except Exception as e:
             print(f"\nError while trying to move the folder: {e}")
 
@@ -1150,6 +1329,4 @@ else:
     print("\nEverything done!")
 
 
-# 10-02-25
-
-# Musik Bildung Praxis Musikerziehung CD
+# 04-03-25
