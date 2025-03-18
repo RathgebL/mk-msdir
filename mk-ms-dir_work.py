@@ -27,10 +27,13 @@ import time
 import shutil
 from datetime import datetime
 from tkinter import filedialog
-# Import for booklet processing (just on Mac)
 if sys.platform == "darwin":
     from PIL import Image, ImageFilter
     import pandas as pd
+
+
+# Import for booklet processing (just on Mac)
+if sys.platform == "darwin":
     import subprocess
 
 # --- sub routines
@@ -126,7 +129,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         user_input = str(input(prompt).strip())
         check_exit(user_input)
        
-        exceptions = {"!exit", "none", "ebd", "¡", "“", "¶"}
+        exceptions = {"!exit", "none", "ebd", "„", "„„", "¡", "“", "““", "¶", "¢", "¢¢", "[", "]", "]]", "|"}
         if user_input.lower() in exceptions:
             return user_input
         
@@ -182,7 +185,7 @@ def handle_input(prompt): # Function to check for empty, single character and lo
         while True: # Check for uppercase characters in the middle of words
             words = user_input.split()
             #print(f"Debug: {words}")
-            char_exceptions = { "„","\"", "\'", "‚", "‘", "-", "(", "/", "‘", "«", "»", "‹", "›"}
+            char_exceptions = { "„","\"", "\'", "‚", "‘", "-", "(", "[", "{", "/", "‘", "«", "»", "‹", "›"}
             for i, word in enumerate(words):             
                 if "-" in word and not word.isupper():
                     #print(f"Debug: 1")
@@ -954,7 +957,8 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                 while True:
                     movtitle = handle_input("Give name for " + str(multimovnr) + ". movement of " + work[2] + " (Track: " + str(tracknumber) + "): ")
                     tracknumber += 1
-                    if movtitle == prev_movtitle:  # Check if input is the same as previous one
+                    exceptions = {"„", "„„", "¡", "“", "““", "¶", "¢", "¢¢", "[", "]", "]]", "|"}
+                    if movtitle == prev_movtitle and movtitle not in exceptions:  # Check if input is the same as previous one
                         confirm = input("You gave the same input as before. Would you like to change your input? (y(Default)/n) ").lower()
                         check_exit(confirm)
                         if confirm == "y" or confirm == "":
@@ -964,17 +968,46 @@ def getworkdir(works, allfiles, mediadir): # Function for work directories
                             break
                         else:
                             print("Invalid input. Please enter 'y' or 'n'.")
+                            tracknumber -= 1
+                            continue
                     else:
                         prev_movtitle = movtitle  # Update prev_movtitle with current input before shortcuts
-                        if movtitle == "¡":
+                        if movtitle == "„": # opt + ^
+                            movtitle = "Presto"
+                            print("Shortcut applied. Name of movement changed to 'Presto'.")
+                        elif movtitle == "„„": # 2x opt + 1
+                            movtitle = "Prestissimo"
+                            print("Shortcut applied. Name of movement changed to 'Prestissimo'.")
+                        elif movtitle == "¡": # opt + 1
+                            movtitle = "Vivace"
+                            print("Shortcut applied. Name of movement changed to 'Vivace'.")
+                        elif movtitle == "“": # opt + 2
                             movtitle = "Allegro"
                             print("Shortcut applied. Name of movement changed to 'Allegro'.")
-                        elif movtitle == "“":
+                        elif movtitle == "““": # 2x opt + 2
+                            movtitle = "Allegro molto"
+                            print("Shortcut applied. Name of movement changed to 'Allegro molto'.")
+                        elif movtitle == "¶": # opt + 3
+                            movtitle = "Moderato"
+                            print("Shortcut applied. Name of movement changed to 'Moderato'.")
+                        elif movtitle == "¢": # opt + 4
                             movtitle = "Andante"
                             print("Shortcut applied. Name of movement changed to 'Andante'.")
-                        elif movtitle == "¶":
+                        elif movtitle == "¢¢": # opt + 4
+                            movtitle = "Andantino"
+                            print("Shortcut applied. Name of movement changed to 'Andantino'.")
+                        elif movtitle == "[": # opt + 5
                             movtitle = "Adagio"
                             print("Shortcut applied. Name of movement changed to 'Adagio'.")
+                        elif movtitle == "]": # opt + 6
+                            movtitle = "Largo"
+                            print("Shortcut applied. Name of movement changed to 'Largo'.")
+                        elif movtitle == "]]": # 2x opt + 6
+                            movtitle = "Larghetto"
+                            print("Shortcut applied. Name of movement changed to 'Larghetto'.")
+                        elif movtitle == "|": # opt + 7
+                            movtitle = "Grave"
+                            print("Shortcut applied. Name of movement changed to 'Grave'.")
                         break
 
                 file_path = os.path.join(mydir, file)  # Update file_path for each iteration
@@ -1294,7 +1327,18 @@ print("If a composer is unknown write 'none' as first name and the family name w
 print("To type in just one name for the composer (i.e. a band name) write 'none' as first name and 'n' to enter as family name.")
 print("Write 'ebd' as first name and the name of the previous composer will automaticlly be filled in.")
 print("Commas (,) and colons (:) will automatically be removed at end of an input.")
-print("Shortcuts:\n\ttype '¡' (opt + 1) for Allegro\n\ttype '“' (opt + 2) for Andante\n\ttype '¶' (opt + 3) for Adagio\n")
+print("Shortcuts (on Mac):" "\n\ttype '„' (opt + ^) for Presto"
+                            "\n\ttype '„„' (2x opt + ^) for Prestissimo"
+                            "\n\ttype '¡' (opt + 1) for Vivace"
+                            "\n\ttype '“' (opt + 2) for Allegro"
+                            "\n\ttype '““' (2x opt + 2) for Allegro molto"
+                            "\n\ttype '¶' (opt + 3) for Moderato"
+                            "\n\ttype '¢' (opt + 4) for Andante"
+                            "\n\ttype '¢¢' (2x opt + 4) for Andantino"
+                            "\n\ttype '[' (opt + 5) for Adagio"
+                            "\n\ttype ']' (opt + 6) for Largo"
+                            "\n\ttype ']]' (2x opt + 6) for Larghetto"
+                            "\n\ttype '|' (opt + 7) for Grave\n")
 
 # Directory
 while True:
@@ -1329,4 +1373,4 @@ else:
     print("\nEverything done!")
 
 
-# 04-03-25
+# 13-03-25
