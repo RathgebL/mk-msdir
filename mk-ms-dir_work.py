@@ -490,26 +490,22 @@ def getcomposer(): # Function to get the family and first name. (Middle name opt
     
 def getnumberofcomposers(): # Function to get number of composers
     numberofcomposers = 0
-    while numberofcomposers == 0:
-        yorn = input("Is the whole media from one composer? (y(Default)/n) ")
+    while True:
+        yorn = input("How many composers are mentioned? Type in a number (ENTER = 1) ").strip()
         check_exit(yorn)
-        if yorn.strip().lower() == "y" or yorn == "":
+        if yorn == "":
             numberofcomposers = 1
-            composer = getcomposer()        
-        elif yorn.strip().lower() == "n":
-            composer = [str, str] # define composer empty to avoid referencing before assignement
-            while True:
-                try:
-                    numberofcomposers = int(input("How many composers are mentioned? "))
-                    check_exit(numberofcomposers)
-                    if numberofcomposers < 2:
-                        print("Invalid input. Please enter a number greater than 1.")
-                    else:
-                        break
-                except ValueError:
-                    print("Invalid input. Please enter a numeric value.")
+            composer = getcomposer()
+            break        
+        elif yorn.isdigit():
+            if int(yorn) > 0:
+                composer = [] # define composer empty to avoid referencing before assignement
+                numberofcomposers = int(yorn)
+                break
+            else:
+                print("Invalid input. Please enter a number greater than 0.")
         else:
-            print("Invalid input. Please enter 'y' or 'n'.")
+            print("Invalid input. Please enter a valid number.")
 
     return numberofcomposers, composer
          
@@ -865,31 +861,25 @@ def getwork(allfiles, numberofcomposers, composer):
 
         # multiple movements
         while True:
-            multimov = input("Does the work range over more than one audio track? (y/n(default)) ").strip().lower()
+            track += 1
+            multimov = input(f"Press ENTER if the work does NOT range over multiple tracks else type in the work's last track number. {track} ... ").strip()
             check_exit(multimov)
-            if multimov == "y":
-                track += 1
-                while True:
-                    endtrack_input = input("It ranges from track " + str(track) + " to track... ")
-                    check_exit(endtrack_input)
-                    try:
-                        endtrack = int(endtrack_input)
-                        if track <= endtrack <= total_tracks: # Check if the input is within the valid range
-                            break
-                        else:
-                            print("Invalid input. End track is out of range.")
-                            continue
-                    except ValueError:
-                        print("Invalid input. Please enter a numeric value.")
-                
-                if endtrack_input:
-                    break
-            elif multimov == "n" or multimov == "":
-                track += 1
+
+            if multimov == "": 
                 endtrack = track
                 break
-            else:
-                print("Wrong input....")
+            
+            try:
+                endtrack = int(multimov)
+                if track <= endtrack <= total_tracks:  # Check if within valid range
+                    break
+                else:
+                    print("Invalid input. End track is out of range.")
+                    track -= 1
+            except ValueError:
+                print("Invalid input. Please enter a numeric value.")
+                track -= 1
+
 
         works.append([composer[0], composer[1], workname, track, endtrack])
         track = endtrack
@@ -1327,18 +1317,18 @@ print("If a composer is unknown write 'none' as first name and the family name w
 print("To type in just one name for the composer (i.e. a band name) write 'none' as first name and 'n' to enter as family name.")
 print("Write 'ebd' as first name and the name of the previous composer will automaticlly be filled in.")
 print("Commas (,) and colons (:) will automatically be removed at end of an input.")
-print("Shortcuts (on Mac):" "\n\ttype '„' (opt + ^) for Presto"
-                            "\n\ttype '„„' (2x opt + ^) for Prestissimo"
-                            "\n\ttype '¡' (opt + 1) for Vivace"
-                            "\n\ttype '“' (opt + 2) for Allegro"
-                            "\n\ttype '““' (2x opt + 2) for Allegro molto"
-                            "\n\ttype '¶' (opt + 3) for Moderato"
-                            "\n\ttype '¢' (opt + 4) for Andante"
-                            "\n\ttype '¢¢' (2x opt + 4) for Andantino"
-                            "\n\ttype '[' (opt + 5) for Adagio"
-                            "\n\ttype ']' (opt + 6) for Largo"
-                            "\n\ttype ']]' (2x opt + 6) for Larghetto"
-                            "\n\ttype '|' (opt + 7) for Grave\n")
+print("Shortcuts (on Mac):" "\n\ttype '„'  (opt + ^) for Presto"
+                            "\n\ttype '„„' (opt + ^) for Prestissimo"
+                            "\n\ttype '¡'  (opt + 1) for Vivace"
+                            "\n\ttype '“'  (opt + 2) for Allegro"
+                            "\n\ttype '““' (opt + 2) for Allegro molto"
+                            "\n\ttype '¶'  (opt + 3) for Moderato"
+                            "\n\ttype '¢'  (opt + 4) for Andante"
+                            "\n\ttype '¢¢' (opt + 4) for Andantino"
+                            "\n\ttype '['  (opt + 5) for Adagio"
+                            "\n\ttype ']'  (opt + 6) for Largo"
+                            "\n\ttype ']]' (opt + 6) for Larghetto"
+                            "\n\ttype '|'  (opt + 7) for Grave\n")
 
 # Directory
 while True:
@@ -1373,4 +1363,4 @@ else:
     print("\nEverything done!")
 
 
-# 13-03-25
+# 18-03-25
