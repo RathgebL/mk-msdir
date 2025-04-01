@@ -18,6 +18,11 @@
 ##                      - renaming
 ##                      - deleting unprocessed files
 ##                      - opening all booklet files
+##
+## To start launchd for automatic booklet folder creation (copy-paste to terminal): 
+    # launchctl unload ~/Library/LaunchAgents/com.user.bookletchecker.plist
+    # launchctl load ~/Library/LaunchAgents/com.user.bookletchecker.plist
+## More detailed description for automatic booklet-folders at: /Users/bibliothek/Scripts/Automatic-booklet-folder_description.md
 
 # --- importing
 import sys
@@ -1363,4 +1368,4 @@ else:
     print("\nEverything done!")
 
 
-# 18-03-25
+# 01-04-25
